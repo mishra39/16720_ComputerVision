@@ -1,4 +1,5 @@
 import numpy as np
+
 def alignChannels(red, green, blue):
     """Given 3 images corresponding to different channels of a color image,
     compute the best aligned result with minimum abberations
@@ -10,7 +11,8 @@ def alignChannels(red, green, blue):
       rgb_output - HxWx3 color image output, aligned as desired"""
     
     disp_max  = 30 #maximum displacement
-    rgb_mat = np.zeros((red.shape[0],red.shape[1],3),'uint8') #Initialize matrix for imposing RGB layers on top of each other
+    [rows,cols] = [red.shape[0],red.shape[1]]
+    rgb_mat = np.zeros((rows,cols,3),'uint8') #Initialize matrix for imposing RGB layers on top of each other
     
     #compute SSD to find error between two color intensities
     def ssdCalc(colr1,colr2):
@@ -20,12 +22,13 @@ def alignChannels(red, green, blue):
     
     #find the minimum error by trying out all the possible combinations
     def errorTest(colr1,colr2):
-        errInit = ssdCalc(colr1,colr2) #find the error of the original matrices
         min_row = 0
         min_col = 0
+        errInit = ssdCalc(colr1,colr2) #find the error of the original matrices
+        
         #displace row and column to compare the error to original ssd error
-        for row in range(disp_max):
-            for col in range(disp_max):
+        for row in range(-disp_max,disp_max):
+            for col in range(-disp_max,disp_max):
                 new_colr2 = np.roll(colr2,[row,col],axis = [0,1])
                 err_disp = ssdCalc(colr1,new_colr2) #find the ssd error for the new shifted array
                 
@@ -33,10 +36,7 @@ def alignChannels(red, green, blue):
                     errInit = err_disp
                     min_row = row
                     min_col = col
-                else:
-                    min_row = 0
-                    min_col = 0
-        
+                    
         return [min_row,min_col]
     
     #function to update the values of the rgb matrix
@@ -47,7 +47,8 @@ def alignChannels(red, green, blue):
         
         return rgb_mat
     
+    rgb_mat[...,0] = red
     rgb_mat = rgbUpdate(red,blue,2)
     rgb_mat = rgbUpdate(red,green,1)
-    
+
     return rgb_mat
