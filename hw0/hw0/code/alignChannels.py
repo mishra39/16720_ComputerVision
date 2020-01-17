@@ -10,7 +10,7 @@ def alignChannels(red, green, blue):
       rgb_output - HxWx3 color image output, aligned as desired"""
     
     disp_max  = 30 #maximum displacement
-    rgb_mat = np.zeros((red.shape[0],red.shape[1],3)) #Initialize matrix for imposing RGB layers on top of each other
+    rgb_mat = np.zeros((red.shape[0],red.shape[1],3),'uint8') #Initialize matrix for imposing RGB layers on top of each other
     
     #compute SSD to find error between two color intensities
     def ssdCalc(colr1,colr2):
@@ -43,11 +43,11 @@ def alignChannels(red, green, blue):
     def rgbUpdate(colr1,colr2,colrIndex):
         [min_error_row,min_error_col] = errorTest(colr1,colr2)
         colr_new = np.roll(colr2,[min_error_row,min_error_col],axis = [0,1])
-        #rgb_mat[...,colrIndex] = colr_new
-        print(rgb_mat.shape)
+        rgb_mat[...,colrIndex] = colr_new
+        
         return rgb_mat
     
     rgb_mat = rgbUpdate(red,blue,2)
+    rgb_mat = rgbUpdate(red,green,1)
     
-    
-    return None
+    return rgb_mat
