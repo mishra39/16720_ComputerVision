@@ -29,7 +29,7 @@ def scalef(s):
 
 def transf(tx, ty):
     A = np.eye(3)
-    A[0, 2] = ty
+    A[0, 2] = ty#?????????????
     A[1, 2] = tx
     return A
 
@@ -41,7 +41,7 @@ def rotf(t):
 
 
 output_shape = im_gray.shape
-cx = im_gray.shape[1] // 2
+cx = im_gray.shape[1] // 2 #why???????????????
 cy = im_gray.shape[0] // 2
 
 A = (transf(output_shape[1]//2, output_shape[0]//2,)
@@ -51,8 +51,8 @@ A = (transf(output_shape[1]//2, output_shape[0]//2,)
 
 # plot a dot at the rotation center
 axes[0, 1].plot(cx, cy, 'r+')
-warped_im = warpA_check.warp(im_gray, A, output_shape)
-warped_im2 = warpA.warp(im_gray, A, output_shape)
+#warped_im = warpA_check.warp(im_gray, A, output_shape)
+warped_im = warpA.warp(im_gray, A, output_shape)
 
 axes[1, 0].imshow(warped_im, cmap=plt.get_cmap('gray'))
 axes[1, 0].set_title('warped')
