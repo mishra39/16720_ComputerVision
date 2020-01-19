@@ -58,5 +58,5 @@ axes[1, 0].imshow(warped_im, cmap=plt.get_cmap('gray'))
 axes[1, 0].set_title('warped')
 
 # write the plot to an image
-plt.savefig('../results/transformed_soln.jpg')
+plt.savefig('../results/transformed.jpg')
 plt.show()
