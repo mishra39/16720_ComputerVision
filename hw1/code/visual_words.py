@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 import scipy.ndimage
 import skimage.color
+from numpy import matlib
 
 
 def extract_filter_responses(opts, img):
@@ -17,31 +18,43 @@ def extract_filter_responses(opts, img):
     [output]
     * filter_responses: numpy.ndarray of shape (H,W,3F)
     '''
+    #Check the number of input channels
+    img_dim = len(img.shape)
+    
+    if img_dim < 3:
+        img = np.matlib.repmat(img,3,1)
+    
     lab_img = skimage.color.rgb2lab(img) #Convert image into the lab color space 
     filter_scales = opts.filter_scales
+
     scale_size = len(filter_scales) #Number of filter scales
+    print(filter_scales)
     filt_num = 4 #Number of filters
     filt_bank = scale_size*filt_num
     
-    #Filters to use
-    scipy.ndimage.gaussian_filter()
-    scipy.ndimage.gaussian_laplace()
-    #how to calculate derivatice of gaussian in x and y?
+
+    
+    
     # ----- TODO -----
     H,W = img.shape[0],img.shape[1]
     filter_responses = np.zeros((H,W,3*filt_bank))
-    
-    for loc, in range(0,):
-        
-        gauss_img = scipy.ndimage.gaussian_filter(lab_img[:,:,channel],filter_scales[loc]) #apply gaussian filter to the lab image
-        laplace_img = scipy.ndimage.gaussian_laplace(lab_img[:,:,channel],filter_scales[loc]) #apply gaussian laplace filter to the lab image
-        
-    
-    
-    
-    filtimg = scipy.ndimage.gaussian_filter(img,sigma = 5)
-    
-    return filtimg
+    gauss_img = np.zeros((H,W,3))
+    laplace_img = np.zeros((H,W,3))
+    for loc  in range(0,scale_size):
+        for layer in range(3):
+            
+            gauss_img = scipy.ndimage.gaussian_filter(lab_img[:,:,layer],filter_scales[loc]) #apply gaussian filter to the lab image
+            laplace_img = scipy.ndimage.gaussian_laplace(lab_img[:,:,layer],filter_scales[loc]) #apply gaussian laplace filter to the lab image
+            gauss_x = scipy.ndimage.gaussian_filter(lab_img[:,:,layer],filter_scales[loc],[1,0]) #apply first order gaussian filter in x to the lab image
+            gauss_y = scipy.ndimage.gaussian_filter(lab_img[:,:,layer],filter_scales[loc],[0,1]) #apply first order gaussian filter in y to the lab image
+            
+            #Save filter responses
+            filter_responses[:,:,loc*filt_num*3 + layer] = gauss_img
+            filter_responses[:,:,loc*filt_num*3 + 3 + layer] = laplace_img
+            filter_responses[:,:,loc*filt_num*3 + 6 + layer] = gauss_x
+            filter_responses[:,:,loc*filt_num*3 + 9 + layer] = gauss_y
+#       
+    return filter_responses
 
 def compute_dictionary_one_image(args):
     '''
@@ -50,11 +63,14 @@ def compute_dictionary_one_image(args):
 
     Your are free to make your own interface based on how you implement compute_dictionary
     '''
-
+    
     # ----- TODO -----
+    #read an image
+    #extract the responses
+    #save to a temp file
     pass
 
-def compute_dictionary(opts, n_worker=1):
+def compute_dictionary(opts, n_worker=4):
     '''
     Creates the dictionary of visual words by clustering using k-means.
 
@@ -73,10 +89,18 @@ def compute_dictionary(opts, n_worker=1):
 
     train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines()
     # ----- TODO -----
+    #load the training data
+    #read the images. # images = T
+    #Extract alpha*T filter responses
+    #create subprocesses to  call ome_image
+    #load temp files back
+    #collect filter responses
+    #run k-means
+    #
     pass
 
     ## example code snippet to save the dictionary
-    # np.save(join(out_dir, 'dictionary.npy'), dictionary)
+    np.save(join(out_dir, 'dictionary.npy'), dictionary)
 
 def get_visual_words(opts, img, dictionary):
     '''
