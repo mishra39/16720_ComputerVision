@@ -6,7 +6,8 @@ from PIL import Image
 import scipy.ndimage
 import skimage.color
 from numpy import matlib
-
+from multiprocessing import Pool
+from opts import get_opts
 
 def extract_filter_responses(opts, img):
     '''
@@ -23,18 +24,19 @@ def extract_filter_responses(opts, img):
     
     if img_dim < 3:
         img = np.matlib.repmat(img,3,1)
+        
+    if img.shape[-1] > 3: #What to do??
+        img = img[:,:,0:3]
     
     lab_img = skimage.color.rgb2lab(img) #Convert image into the lab color space 
     filter_scales = opts.filter_scales
 
     scale_size = len(filter_scales) #Number of filter scales
-    print(filter_scales)
     filt_num = 4 #Number of filters
     filt_bank = scale_size*filt_num
     
+    #######Optimize code, use fewer loops
 
-    
-    
     # ----- TODO -----
     H,W = img.shape[0],img.shape[1]
     filter_responses = np.zeros((H,W,3*filt_bank))
@@ -49,6 +51,7 @@ def extract_filter_responses(opts, img):
             gauss_y = scipy.ndimage.gaussian_filter(lab_img[:,:,layer],filter_scales[loc],[0,1]) #apply first order gaussian filter in y to the lab image
             
             #Save filter responses
+            #Improve saving approach
             filter_responses[:,:,loc*filt_num*3 + layer] = gauss_img
             filter_responses[:,:,loc*filt_num*3 + 3 + layer] = laplace_img
             filter_responses[:,:,loc*filt_num*3 + 6 + layer] = gauss_x
@@ -63,14 +66,23 @@ def compute_dictionary_one_image(args):
 
     Your are free to make your own interface based on how you implement compute_dictionary
     '''
-    
+    opts = get_opts()
+    ind,alpha,train_files = args
+#    print(ind)
     # ----- TODO -----
-    #read an image
-    #extract the responses
-    #save to a temp file
-    pass
+    #Inputs needed: location of the image, alpha (random pixels), image  path
+    img = Image.open("../data/"+ (train_files)) #read an image
 
-def compute_dictionary(opts, n_worker=4):
+    img = np.array(img).astype(np.float32)/255
+    filter_resp = extract_filter_responses(opts,img) #extract the responses
+    rand_loc_y = np.random.choice(filter_resp[0],alpha,replace=True) #Sample out alpha random pixels from the images
+    rand_loc_x = np.random.choice(filter_resp[1],alpha,replace=True)
+    
+    img_sub = img[rand_loc_y,rand_loc_x,:] #Extract the random pixels of size alpha*3*F
+    print('here')
+    np.save("../temp/"+str(ind),img_sub) #save to a temp file
+
+def compute_dictionary(opts, n_worker=8):
     '''
     Creates the dictionary of visual words by clustering using k-means.
 
@@ -81,13 +93,21 @@ def compute_dictionary(opts, n_worker=4):
     [saved]
     * dictionary : numpy.ndarray of shape (K,3F)
     '''
-
     data_dir = opts.data_dir
     feat_dir = opts.feat_dir
     out_dir = opts.out_dir
     K = opts.K
-
-    train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines()
+    alpha = opts.alpha
+    
+    train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines() #load the training data
+    
+    T_img = len(train_files)#size of training data--> # of images, T
+        
+    prcs = Pool(n_worker)
+    args = [T_img,alpha,train_files]
+    args = zip(list(range(T_img)), [alpha]*T_img , train_files)
+    
+    prcs.map(compute_dictionary_one_image,args)
     # ----- TODO -----
     #load the training data
     #read the images. # images = T
@@ -97,10 +117,9 @@ def compute_dictionary(opts, n_worker=4):
     #collect filter responses
     #run k-means
     #
-    pass
 
     ## example code snippet to save the dictionary
-    np.save(join(out_dir, 'dictionary.npy'), dictionary)
+    #np.save(join(out_dir, 'dictionary.npy'), dictionary)
 
 def get_visual_words(opts, img, dictionary):
     '''
