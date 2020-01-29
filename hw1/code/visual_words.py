@@ -21,7 +21,7 @@ def extract_filter_responses(opts, img):
     '''
     #Check the number of input channels
     img_dim = len(img.shape)
-    
+
     if img_dim < 3:
         img = np.matlib.repmat(img,3,1)
         
@@ -43,6 +43,7 @@ def extract_filter_responses(opts, img):
     gauss_img = np.zeros((H,W,3))
     laplace_img = np.zeros((H,W,3))
     for loc  in range(0,scale_size):
+        
         for layer in range(3):
             
             gauss_img = scipy.ndimage.gaussian_filter(lab_img[:,:,layer],filter_scales[loc]) #apply gaussian filter to the lab image
@@ -67,20 +68,24 @@ def compute_dictionary_one_image(args):
     Your are free to make your own interface based on how you implement compute_dictionary
     '''
     opts = get_opts()
+#    print(args)
     ind,alpha,train_files = args
-#    print(ind)
-    # ----- TODO -----
-    #Inputs needed: location of the image, alpha (random pixels), image  path
-    img = Image.open("../data/"+ (train_files)) #read an image
-
-    img = np.array(img).astype(np.float32)/255
-    filter_resp = extract_filter_responses(opts,img) #extract the responses
-    rand_loc_y = np.random.choice(filter_resp[0],alpha,replace=True) #Sample out alpha random pixels from the images
-    rand_loc_x = np.random.choice(filter_resp[1],alpha,replace=True)
     
+#    # ----- TODO -----
+#    #Inputs needed: location of the image, alpha (random pixels), image  path
+    img = Image.open("../data/"+ (train_files)) #read an image
+#
+    img = np.array(img).astype(np.float32)/255
+#
+    filter_resp = extract_filter_responses(opts,img) #extract the responses
+    rand_loc_y = np.random.choice(filter_resp.shape[0],int(alpha)) #Sample out alpha random pixels from the images
+    rand_loc_x = np.random.choice(filter_resp.shape[1], int(alpha))
+#    
     img_sub = img[rand_loc_y,rand_loc_x,:] #Extract the random pixels of size alpha*3*F
-    print('here')
-    np.save("../temp/"+str(ind),img_sub) #save to a temp file
+    
+    np.save(os.path.join("../temp/", str(ind)+'.npy'), img_sub)
+#    print('here')
+#    np.save("../temp/"+str(ind),img_sub) #save to a temp file
 
 def compute_dictionary(opts, n_worker=8):
     '''
@@ -100,21 +105,24 @@ def compute_dictionary(opts, n_worker=8):
     alpha = opts.alpha
     
     train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines() #load the training data
-    
     T_img = len(train_files)#size of training data--> # of images, T
-        
-    prcs = Pool(n_worker)
-    args = [T_img,alpha,train_files]
-    args = zip(list(range(T_img)), [alpha]*T_img , train_files)
+    T_img_list = np.arange(T_img)
+    alpha_list = np.ones(T_img)* alpha
     
+    
+    prcs = Pool(n_worker)
+    args = list(zip(T_img_list,alpha_list,train_files))
     prcs.map(compute_dictionary_one_image,args)
     # ----- TODO -----
     #load the training data
     #read the images. # images = T
     #Extract alpha*T filter responses
     #create subprocesses to  call ome_image
-    #load temp files back
-    #collect filter responses
+    filt_resp = []
+    for ind in range(0,T_img):
+        tmp_file = np.load("../temp/"+str(ind)+'.npy') #load temp files back
+        filt_resp = np.append(filt_resp ,tmp_file)
+    
     #run k-means
     #
 

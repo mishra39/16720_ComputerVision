@@ -34,6 +34,7 @@ def main():
 
     ## Q2.1-2.4
     # n_cpu = util.get_num_CPU()
+    
     # visual_recog.build_recognition_system(opts, n_worker=n_cpu)
 
     ## Q2.5
