@@ -8,6 +8,7 @@ import skimage.color
 from numpy import matlib
 from multiprocessing import Pool
 from opts import get_opts
+import sklearn.cluster
 
 def extract_filter_responses(opts, img):
     '''
@@ -81,13 +82,10 @@ def compute_dictionary_one_image(args):
     rand_loc_y = np.random.choice(filter_resp.shape[0],int(alpha)) #Sample out alpha random pixels from the images
     rand_loc_x = np.random.choice(filter_resp.shape[1], int(alpha))
 #    
-    img_sub = img[rand_loc_y,rand_loc_x,:] #Extract the random pixels of size alpha*3*F
-    
+    img_sub = filter_resp[rand_loc_y,rand_loc_x,:] #Extract the random pixels of size alpha*3*F
     np.save(os.path.join("../temp/", str(ind)+'.npy'), img_sub)
-#    print('here')
-#    np.save("../temp/"+str(ind),img_sub) #save to a temp file
 
-def compute_dictionary(opts, n_worker=8):
+def compute_dictionary(opts, n_worker=6):
     '''
     Creates the dictionary of visual words by clustering using k-means.
 
@@ -112,22 +110,20 @@ def compute_dictionary(opts, n_worker=8):
     
     prcs = Pool(n_worker)
     args = list(zip(T_img_list,alpha_list,train_files))
-    prcs.map(compute_dictionary_one_image,args)
+    prcs.map(compute_dictionary_one_image,args)     #create subprocesses to  call ome_image
+    
     # ----- TODO -----
-    #load the training data
-    #read the images. # images = T
-    #Extract alpha*T filter responses
-    #create subprocesses to  call ome_image
-    filt_resp = []
+    filter_responses = []
     for ind in range(0,T_img):
         tmp_file = np.load("../temp/"+str(ind)+'.npy') #load temp files back
-        filt_resp = np.append(filt_resp ,tmp_file)
-    
-    #run k-means
-    #
+        filter_responses.append(tmp_file)
+        
+    filter_responses = np.concatenate(filter_responses,axis=0)
+    kmeans = sklearn.cluster.KMeans(n_clusters=K).fit(filter_responses)     #run k-means
+    dictionary = kmeans.cluster_centers_
 
     ## example code snippet to save the dictionary
-    #np.save(join(out_dir, 'dictionary.npy'), dictionary)
+    np.save(join(out_dir, 'dictionary.npy'), dictionary)
 
 def get_visual_words(opts, img, dictionary):
     '''
@@ -142,5 +138,12 @@ def get_visual_words(opts, img, dictionary):
     '''
     
     # ----- TODO -----
-    pass
-
+    H,W,_ = img.shape
+    
+    filt_img = extract_filter_responses(opts,img) #get filtered response
+    filt_img = filt_img.reshape(H*W,dictionary.shape[-1])
+    eucld = scipy.spatial.distance.cdist(filt_img,dictionary,'euclidean') #match each pixel with dictionary
+    closest_word = np.argmin(eucld,axis=1) #use euclidian distance to find the closest match in the dictionary
+    wordmap = closest_word.reshape(H,W) #matrix with the same width and height as img, where each pixel in wordmap is assigned the closest visual word of the filter response at the respective pixel in img
+    print(closest_word.shape)
+    return wordmap
