@@ -6,9 +6,9 @@ import numpy as np
 from PIL import Image
 
 import visual_words
+import matplotlib.pyplot as plt
 
-
-def get_feature_from_wordmap(opts, wordmap):
+def get_feature_from_wordmap(opts, wordmap, dict_size):
     '''
     Compute histogram of visual words.
 
@@ -21,9 +21,18 @@ def get_feature_from_wordmap(opts, wordmap):
     '''
 
     K = opts.K
+    data_dir = opts.data_dir
+    feat_dir = opts.feat_dir
+    out_dir = opts.out_dir
+    K = opts.K
+    alpha = opts.alpha
+    
     # ----- TODO -----
-    pass
-
+    hist = np.histogram(wordmap,bins=dict_size,density=True)
+     #L-1 normalized?????????????????
+#    img = np.array(img).astype(np.float32)/255
+#    filter_responses = visual_words.extract_filter_responses(opts, img)
+     
 def get_feature_from_wordmap_SPM(opts, wordmap):
     '''
     Compute histogram of visual words using spatial pyramid matching.
@@ -38,9 +47,33 @@ def get_feature_from_wordmap_SPM(opts, wordmap):
         
     K = opts.K
     L = opts.L
+    K = opts.K
+    data_dir = opts.data_dir
+    feat_dir = opts.feat_dir
+    out_dir = opts.out_dir
+    alpha = opts.alpha
+    dictionary = np.load(join(out_dir, 'dictionary.npy'))
+    dict_size = len(dictionary)
     # ----- TODO -----
-    pass
+    H,W = wordmap.shape
+    hist_all = []
+    for l_num in range(L,0-1,-1):
+        sec_layer = pow(2,l_num) #number of sections in the layer
+        print(l_num,sec_layer)
+        if l_num > 1:
+            layr_wt = 2**(l_num-L-1) #weight of the layer while concatenating
+            
+        else:
+            layr_wt = 2**(-L)
+        sub_sec_rows = np.split(wordmap,sec_layer,axis=0) # Splitting of rows
+        for col_split in range(0,len(sub_sec_rows)):
+            sub_sec_cols = np.split(sub_sec_rows[col_split], sec_layer, axis=1)
+            
+            for i in sub_sec_cols:
+                hist = np.histogram(i,bins = dict_size)
+                hist_all.append(hist*layr_wt)
     
+    return hist_all
 def get_image_feature(opts, img_path, dictionary):
     '''
     Extracts the spatial pyramid matching feature.
@@ -80,9 +113,15 @@ def build_recognition_system(opts, n_worker=1):
     train_files = open(join(data_dir, 'train_files.txt')).read().splitlines()
     train_labels = np.loadtxt(join(data_dir, 'train_labels.txt'), np.int32)
     dictionary = np.load(join(out_dir, 'dictionary.npy'))
-
+    
+    img_path = join(opts.data_dir, 'kitchen/sun_aasmevtpkslccptd.jpg')
+    img = Image.open(img_path)
+    img = np.array(img).astype(np.float32)/255
+    wordmap = visual_words.get_visual_words(opts, img, dictionary)
     # ----- TODO -----
-    pass
+    dict_size = len(dictionary)
+    get_feature_from_wordmap(opts,wordmap,dict_size)
+    hist_all = get_feature_from_wordmap_SPM(opts,wordmap)
 
     ## example code snippet to save the learned system
     # np.savez_compressed(join(out_dir, 'trained_system.npz'),
@@ -105,8 +144,10 @@ def distance_to_set(word_hist, histograms):
     '''
 
     # ----- TODO -----
-    pass    
+    hist_sim = np.minimum() # find minimum of each corresponding bin
+    hist_sim = sum(hist_sim) # find the histogram intersection similarity between word_hist and histograms
     
+    return hist_sim
 def evaluate_recognition_system(opts, n_worker=1):
     '''
     Evaluates the recognition system for all test images and returns the confusion matrix.

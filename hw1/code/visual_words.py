@@ -102,7 +102,7 @@ def compute_dictionary(opts, n_worker=6):
     K = opts.K
     alpha = opts.alpha
     
-    train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines() #load the training data
+    train_files = open(join(data_dir, 'train_files.txt')).read().splitlines() #load the training data
     T_img = len(train_files)#size of training data--> # of images, T
     T_img_list = np.arange(T_img)
     alpha_list = np.ones(T_img)* alpha
@@ -145,5 +145,4 @@ def get_visual_words(opts, img, dictionary):
     eucld = scipy.spatial.distance.cdist(filt_img,dictionary,'euclidean') #match each pixel with dictionary
     closest_word = np.argmin(eucld,axis=1) #use euclidian distance to find the closest match in the dictionary
     wordmap = closest_word.reshape(H,W) #matrix with the same width and height as img, where each pixel in wordmap is assigned the closest visual word of the filter response at the respective pixel in img
-    print(closest_word.shape)
     return wordmap

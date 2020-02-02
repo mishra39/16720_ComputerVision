@@ -25,13 +25,13 @@ def get_opts():
     parser.add_argument('--filter-scales', nargs='+', type=float,
                         default=[1, 2, 10],
                         help='a list of scales for all the filters')
-    parser.add_argument('--K', type=int, default=10,
+    parser.add_argument('--K', type=int, default=25, #10 was default
                         help='# of words')
-    parser.add_argument('--alpha', type=int, default=25,
+    parser.add_argument('--alpha', type=int, default=75,#25 was default
                         help='Using only a subset of alpha pixels in each image') 
 
     ## Recognition system (requires tuning)
-    parser.add_argument('--L', type=int, default=1,
+    parser.add_argument('--L', type=int, default=2,
                         help='# of layers in spatial pyramid matching (SPM)')
 
     ## Additional options (add your own hyperparameters here)
