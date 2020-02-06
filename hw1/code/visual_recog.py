@@ -159,9 +159,10 @@ def build_recognition_system(opts, n_worker=1):
     data_dir = opts.data_dir
     out_dir = opts.out_dir
     SPM_layer_num = opts.L
-
-    train_files = open(join(data_dir, 'train_files_small.txt')).read().splitlines()
-    train_labels = np.loadtxt(join(data_dir, 'train_labels_small.txt'), np.int32)
+    
+    
+    train_files = open(join(data_dir, 'train_files.txt')).read().splitlines()
+    train_labels = np.loadtxt(join(data_dir, 'train_labels.txt'), np.int32)
     dictionary = np.load(join(out_dir, 'dictionary.npy'))
     dict_size = len(dictionary)
     
@@ -196,7 +197,13 @@ def build_recognition_system(opts, n_worker=1):
          dictionary=dictionary,
          SPM_layer_num=SPM_layer_num,
      )
-    per_acc = evaluate_recognition_system(opts,8)
+    print('in recognition')
+    print('L is', opts.L)
+    print('K is', opts.K)
+    print('alpha:', opts.alpha)
+    print('filter_scales',opts.filter_scales)
+#    per_acc = evaluate_recognition_system(opts,8)
+#    print(per_acc)
 def distance_to_set(word_hist, histograms):
     '''
     Compute similarity between a histogram of visual words with all training image histograms.
@@ -229,6 +236,7 @@ def evaluate_recognition_system(opts, n_worker=8):
 
     data_dir = opts.data_dir
     out_dir = opts.out_dir
+    wrng = []
 
     trained_system = np.load(join(out_dir, 'trained_system.npz'))
     dictionary = trained_system['dictionary']
@@ -237,9 +245,9 @@ def evaluate_recognition_system(opts, n_worker=8):
     test_opts = copy(opts)
     test_opts.K = dictionary.shape[0]
     test_opts.L = trained_system['SPM_layer_num']
-
-    test_files = open(join(data_dir, 'test_files_small.txt')).read().splitlines()
-    test_labels = np.loadtxt(join(data_dir, 'test_labels_small.txt'), np.int32)
+    
+    test_files = open(join(data_dir, 'test_files.txt')).read().splitlines()
+    test_labels = np.loadtxt(join(data_dir, 'test_labels.txt'), np.int32)
     test_file_num = len(test_files)
     
     # ----- TODO -----
@@ -248,6 +256,7 @@ def evaluate_recognition_system(opts, n_worker=8):
     
     train_feats = trained_system['features']
     train_labels = trained_system['labels']
+    
     for ind_f in range(test_file_num):
         img = Image.open("../data/"+ (test_files[ind_f])) # Load test images
         img = np.array(img).astype(np.float32)/255 #convert to 0-1 range values
@@ -258,9 +267,14 @@ def evaluate_recognition_system(opts, n_worker=8):
         test_pred_labl[ind_f] = labl_pred
         labl_true = test_labels[ind_f]
         conf_mat[labl_true,labl_pred] += 1
-        
+        if labl_true != labl_pred:
+            wrng.append(test_files[ind_f])
 #        pdb.set_trace()
         
     per_acc = np.trace(conf_mat) / np.sum(conf_mat)
-    print(per_acc)
-    return per_acc
+    print('in evaluation')
+    print('L is', opts.L)
+    print('K is', opts.K)
+    print('alpha is', opts.alpha)
+#    print(per_acc)
+    return conf_mat,per_acc

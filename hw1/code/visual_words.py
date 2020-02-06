@@ -23,10 +23,10 @@ def extract_filter_responses(opts, img):
     #Check the number of input channels
     img_dim = len(img.shape)
 
-    if img_dim < 3:
-        img = np.matlib.repmat(img,3,1)
+    if img_dim == 2:
+        img = np.stack((img,)*3,axis=-1)
         
-    if img.shape[-1] > 3: #What to do??
+    elif img.shape[2] > 3: #What to do??
         img = img[:,:,0:3]
     
     lab_img = skimage.color.rgb2lab(img) #Convert image into the lab color space 
@@ -75,7 +75,6 @@ def compute_dictionary_one_image(args):
 #    # ----- TODO -----
 #    #Inputs needed: location of the image, alpha (random pixels), image  path
     img = Image.open("../data/"+ (train_files)) #read an image
-#
     img = np.array(img).astype(np.float32)/255
 #
     filter_resp = extract_filter_responses(opts,img) #extract the responses
@@ -85,7 +84,7 @@ def compute_dictionary_one_image(args):
     img_sub = filter_resp[rand_loc_y,rand_loc_x,:] #Extract the random pixels of size alpha*3*F
     np.save(os.path.join("../temp/", str(ind)+'.npy'), img_sub)
 
-def compute_dictionary(opts, n_worker=6):
+def compute_dictionary(opts, n_worker=8):
     '''
     Creates the dictionary of visual words by clustering using k-means.
 
@@ -123,6 +122,11 @@ def compute_dictionary(opts, n_worker=6):
     dictionary = kmeans.cluster_centers_
 
     ## example code snippet to save the dictionary
+    print('in compute dictionary')
+    print('L is', opts.L)
+    print('K is', opts.K)
+    print('alpha is', opts.alpha)
+    
     np.save(join(out_dir, 'dictionary.npy'), dictionary)
 
 def get_visual_words(opts, img, dictionary):
@@ -136,10 +140,11 @@ def get_visual_words(opts, img, dictionary):
     [output]
     * wordmap: numpy.ndarray of shape (H,W)
     '''
-    
     # ----- TODO -----
-    H,W,_ = img.shape
-    
+    if (len(img.shape)) > 2:
+        H,W,_ = img.shape
+    else:
+        H,W = img.shape
     filt_img = extract_filter_responses(opts,img) #get filtered response
     filt_img = filt_img.reshape(H*W,dictionary.shape[-1])
     eucld = scipy.spatial.distance.cdist(filt_img,dictionary,'euclidean') #match each pixel with dictionary

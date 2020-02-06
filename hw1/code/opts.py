@@ -23,11 +23,11 @@ def get_opts():
 
     ## Visual words (requires tuning)
     parser.add_argument('--filter-scales', nargs='+', type=float,
-                        default=[1, 2, 10],
+                        default=[1, 2, 10, 25],# 10, 25, 50],
                         help='a list of scales for all the filters')
-    parser.add_argument('--K', type=int, default=25, #10 was default
+    parser.add_argument('--K', type=int, default=90, #10 was default
                         help='# of words')
-    parser.add_argument('--alpha', type=int, default=75,#25 was default
+    parser.add_argument('--alpha', type=int, default=50,#25 was default
                         help='Using only a subset of alpha pixels in each image') 
 
     ## Recognition system (requires tuning)
