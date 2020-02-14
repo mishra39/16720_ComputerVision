@@ -5,6 +5,8 @@ from helper import briefMatch
 from helper import computeBrief
 from helper import corner_detection
 
+# I1, I2 : Images to match
+# opts: input opts
 
 def matchPics(I1, I2, opts):
 
@@ -29,10 +31,5 @@ def matchPics(I1, I2, opts):
 
     # Match features using the descriptors
     matches = briefMatch(desc1, desc2, ratio)
-
-        # I1, I2 : Images to match
-        # opts: input opts
-
-
 
     return matches, locs1, locs2
