@@ -13,9 +13,10 @@ from loadVid import loadVid
 opts = get_opts()
 #Write script for Q3.1
 ar_src = loadVid('../data/ar_source.mov')
-book_vid = loadVid('../data/book.mov')
-matches, locs1, locs2 = matchPics(ar_src,book_vid,opts)
+# book_vid = loadVid('../data/book.mov')
 
-#Processing the video one frame at a time
-for frame_num in range(ar_src[:,:,frame_num]):
-    frame = frame_num
+# Processing the video one frame at a time
+for frame_num in range(ar_src.shape[2]):
+    im = ar_src[frame_num,:,:,:]
+    print(im.shape)
+    plt.imshow(im)
