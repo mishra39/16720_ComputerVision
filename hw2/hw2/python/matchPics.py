@@ -12,8 +12,8 @@ def matchPics(I1, I2, opts):
 
 
     # Convert Images to GrayScale
-    I1 = np.dot(I1, [0.299, 0.587, 0.114])
-    I2 = np.dot(I2, [0.299, 0.587, 0.114])
+    I1 = cv2.cvtColor(I1, cv2.COLOR_BGR2GRAY)
+    I2 = cv2.cvtColor(I2, cv2.COLOR_BGR2GRAY)
 
 
     ratio = opts.ratio  # 'ratio for BRIEF feature descriptor'

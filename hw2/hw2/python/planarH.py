@@ -17,8 +17,8 @@ opts = get_opts()
 def computeH(x1, x2):
 	#Q2.2.1
 	#Compute the homography between two sets of points
-    x1 = x1.T
-    x2 = x2.T
+    # x1 = x1.T
+    # x2 = x2.T
 
     A = np.empty([2*x1.shape[0],9])
 
@@ -77,23 +77,6 @@ def computeH_norm(x1, x2):
     s2_mat = np.array([[s2,0,0],[0,s2,0],[0,0,1]])
     trans2_mat = np.array([[1,0,-mean_x2],[0,1,-mean_y2],[0,0,1]])
     T2 = np.dot(s2_mat,trans2_mat)
-	#Compute the centroid of the points
-#     centroid_x1_x, centroid_x1_y = centroid(x1)
-#     centroid_x2_x, centroid_x2_y = centroid(x2)
-
-# 	#Shift the origin of the points to the centroid
-#     x1[:,0] = x1[:,0] - centroid_x1_x
-#     x1[:,1] = x1[:,1] - centroid_x1_y
-
-#     x2[:,0] = x2[:,0] - centroid_x2_x
-#     x2[:,1] = x2[:,1] - centroid_x2_y
-
-# 	#Normalize the points so that the largest distance from the origin is equal to sqrt(2)
-#     x1[:,0] = x1[:,0] / np.max(x1[:,0])
-#     x1[:,1] = x1[:,1] / np.max(x1[:,1])
-
-#     x2[:,0] = x2[:,0] / np.max(x2[:,0])
-#     x2[:,1] = x2[:,1] / np.max(x2[:,1])
 
 	#Similarity transform 1n
     x1_hom = np.hstack((x1,np.ones((x1.shape[0],1))))
@@ -117,7 +100,7 @@ def computeH_norm(x1, x2):
     return H2to1
 
 
-def computeH_ransac(matches, locs1, locs2, opts):
+def computeH_ransac(locs1, locs2, opts):
 	#Q2.2.3
 	#Compute the best fitting homography given a list of matching points
 
@@ -130,23 +113,21 @@ def computeH_ransac(matches, locs1, locs2, opts):
     rand_2 = np.empty([2,4])
     max_inliers = -1
 
-
-    x1 = locs1[matches[:,0]]
-    x2 = locs2[matches[:,1]]
-
+    x1 = locs1
+    x2 = locs2
     # x1 = np.transpose(x1)
     # x2 = np.transpose(x2)
     x1_hom = np.hstack((x1,np.ones((x1.shape[0],1))))
     x2_hom = np.hstack((x2,np.ones((x2.shape[0],1))))
 
 
-    for ind in range(max_iters*1):
+    for ind in range(max_iters):
         tot_inliers = 0
-        ind_rand = np.random.choice(matches.shape[0],4,replace=False)
-        chosen_matches = matches[ind_rand]
+        ind_rand = np.random.choice(locs1.shape[0],4)#,replace=False)
+
         # print(chosen_matches)
-        rand_1 = locs1[chosen_matches[:,0]]
-        rand_2 = locs2[chosen_matches[:,1]]
+        rand_1 = locs1[ind_rand,:]
+        rand_2 = locs2[ind_rand,:]
 
         H_norm = computeH_norm(rand_1,rand_2) # Homography between locs1 and locs2
         # H_norm, status = cv2.findHomography(rand_1,rand_2)
@@ -207,12 +188,24 @@ def compositeH(H2to1, template, img):
  	#of the image using the homography
  	#Note that the homography we compute is from the image to the template;
  	#For warping the template to the image, we need to invert it.
+    mask_ones = np.ones(template.shape)
+    mask_ones = cv2.transpose(mask_ones)
+    warp_mask = cv2.warpPerspective(mask_ones, H2to1, (img.shape[0],img.shape[1]))
+    template = cv2.transpose(template)
 
-    warped_hp = cv2.warpPerspective(template,(H2to1) ,(img.shape[1], img.shape[0]))
-    non_zero_ind = np.nonzero(warped_hp)
-    img[non_zero_ind] = 0
-    composite_img = warped_hp + img
-    plt.imshow(composite_img)
+    warp_mask = cv2.transpose(warp_mask)
+    non_zero_ind = np.nonzero(warp_mask)
+
+    warp_template = cv2.warpPerspective(template, H2to1, (img.shape[0],img.shape[1]))
+    warp_template = cv2.transpose(warp_template)
+    img[non_zero_ind] = warp_template[non_zero_ind]
+    composite_img = img
+
+    # warped_hp = cv2.warpPerspective(template,(H2to1) ,(img.shape[1], img.shape[0]))
+
+    # img[non_zero_ind] = 0
+    # composite_img = warped_hp + img
+    # plt.imshow(composite_img)
 
  	#Warp mask by appropriate homography
 
