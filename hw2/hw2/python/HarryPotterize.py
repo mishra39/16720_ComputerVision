@@ -15,13 +15,18 @@ from planarH import compositeH
 opts = get_opts()
 
 #Read required images
-cv_cover = cv2.imread('../data/cv_cover.jpg')
+cv_cover = cv2.imread('../data/cv_cover.jpg') #use PIL
 cv_desk = cv2.imread('../data/cv_desk.png')
 hp_cover = cv2.imread('../data/hp_cover.jpg')
-
 matches, locs1, locs2 = matchPics(np.transpose(cv_cover,(1,0,2)),np.transpose(cv_desk,(1,0,2)),opts)
-bestH2to1, inliers = computeH_ransac(matches,locs1, locs2, opts)
+
+# max_iters = [100, 500, 1000, 5000, 10000, 5000, 5000, 5000, 5000]
+# tol = [2.0,2.0,2.0,2.0,2.0, 1.0, 5.0, 7.0, 10.0]
 hp_cover_resize = cv2.resize(hp_cover,(cv_cover.shape[1], cv_cover.shape[0]))
-warped_im = cv2.warpPerspective(hp_cover_resize,(bestH2to1) ,(cv_desk.shape[1], cv_desk.shape[0]))
-plt.imshow(warped_im)
+
+# for ind in range(len(max_iters)):
+# opts.max_iters = max_iters[ind]
+# opts.inlier_tol = tol[ind]
+bestH2to1, inliers = computeH_ransac(matches,locs1, locs2, opts)
 composite_img = compositeH(bestH2to1 ,hp_cover_resize,cv_desk)
+cv2.imwrite('../results/harry_poterize.jpg',composite_img)

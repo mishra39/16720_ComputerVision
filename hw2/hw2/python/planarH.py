@@ -31,12 +31,12 @@ def computeH(x1, x2):
         A[2*ind] = [-u_1, -v_1, -1, 0,0,0, u_1*u_2, u_2*v_1, u_2]    #[0,0,0, -u_2,-v_2,-1, v_1*u_2, v_1*v_2, v_1]
         A[2*ind+1] = [0,0,0,-u_1,-v_1,-1,v_2*u_1,v_2*v_1,v_2]#[u_2, v_2, 1, 0,0,0, -u_2*u_1, -v_2*u_1, -u_1]#[0,0,0, -u_2,-v_2,-1, v_1*u_2, v_1*v_2, v_2]
     # pdb.set_trace()
-    print(x1.shape)
-    print(A.shape)
+    # print(x1.shape)
+    # print(A.shape)
     U,S,V_t = np.linalg.svd(A)
     eig_val = S[-1] # the smallest eignvalue
     eig_vect = V_t[-1,:] / V_t[-1,-1] # the eigenvector corresponding to smallest eignvalue
-    print(V_t.shape)
+    # print(V_t.shape)
 
     H2to1  = eig_vect
     H2to1 = H2to1.reshape(3,3)
@@ -140,7 +140,7 @@ def computeH_ransac(matches, locs1, locs2, opts):
     x2_hom = np.hstack((x2,np.ones((x2.shape[0],1))))
 
 
-    for ind in range(max_iters*10):
+    for ind in range(max_iters*1):
         tot_inliers = 0
         ind_rand = np.random.choice(matches.shape[0],4,replace=False)
         chosen_matches = matches[ind_rand]
@@ -234,7 +234,7 @@ def centroid(points):
     return [centroid_x, centroid_y]
 
 if __name__ == '__main__':
-    print('hi')
+    # print('hi')
     cv_cover = cv2.imread('../data/cv_cover.jpg')
     cv_desk = cv2.imread('../data/cv_desk.png')
     hp_cover = cv2.imread('../data/hp_cover.jpg')

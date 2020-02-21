@@ -18,7 +18,7 @@ def matchPics(I1, I2, opts):
 
     ratio = opts.ratio  # 'ratio for BRIEF feature descriptor'
     sigma = opts.sigma  # 'threshold for corner detection using FAST feature detector'
-    print('Sigma is: ',sigma, 'and Ratio is: ', ratio)
+    # print('Sigma is: ',sigma, 'and Ratio is: ', ratio)
 
 
     # Detect Features in Both Images
