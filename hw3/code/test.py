@@ -66,36 +66,23 @@ def LucasKanade(It, It1, rect, threshold, num_iters, p0=np.zeros(2)):
         y_wrp = np.linspace(y_tl_wrp, y_br_wrp, rect_y)
         mesh_xw, mesh_yw = np.meshgrid(x_wrp, y_wrp)
 
+
+
         # gradient for image
-        dx_spline = RectBivariateSpline(np.arange(It_shape_0), np.arange(It_shape_1), I_dx)
-        dy_spline = RectBivariateSpline(np.arange(It_shape_0), np.arange(It_shape_1), I_dy)
+        dx_spline = RectBivariateSpline(np.arange(It1_shape_0), np.arange(It1_shape_1), I_dx)
+        dy_spline = RectBivariateSpline(np.arange(It1_shape_0), np.arange(It1_shape_1), I_dy)
 
         # Interpolate second Image
         It1_interp = It1_spline.ev(mesh_yw, mesh_xw)
         It1_interp_x = dx_spline.ev(mesh_yw, mesh_xw)
         It1_interp_y = dy_spline.ev(mesh_yw, mesh_xw)
-
-        I_t_plus_1 = np.vstack((It1_interp_x.flatten(), It1_interp_y.flatten())).T
-
-        # Jacobian
-        A = np.dot(I_t_plus_1, np.eye(2))
-
-        b = (It_interp - It1_interp).reshape(-1,1)  # Error calculation
-        H = np.dot(np.transpose(A),A)
-        # pdb.set_trace()
-        H_inv = np.linalg.inv(H)
-        A_t_b = np.dot(np.transpose(A),b)
-        del_p = np.dot(H_inv,A_t_b)
-        p[0] += del_p[0,0]
-        p[1] += del_p[1,0]
-        del_p = np.linalg.norm(del_p)
-
-        return p
+        # A = np.vstack((It1_interp_x.flatten(), It1_interp_y.flatten())
+        b = (It_interp - It1_interp)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_iters', type=int, default=1e4, help='number of iterations of Lucas-Kanade')
+    parser.add_argument('--num_iters', type=int, default=10, help='number of iterations of Lucas-Kanade')
     parser.add_argument('--threshold', type=float, default=1e-2, help='dp threshold of Lucas-Kanade for terminating optimization')
     args = parser.parse_args()
     num_iters = args.num_iters
@@ -114,6 +101,7 @@ if __name__ == "__main__":
 
     #Start the figure
     fig,ax = plt.subplots(1)
+
 
     for ind in range(frame_tot):
         frame_prev = seq[:,:,ind]
