@@ -15,7 +15,7 @@ threshold = args.threshold
 seq = np.load("../data/carseq.npy")
 rect = [59, 116, 145, 151]
 frame_eval = [1, 100, 200, 300, 400]
-
+rect_orig  = rect
 frame_template = seq[:,:,0]  # Template frame
 rect_all = []
 
@@ -26,8 +26,9 @@ height = rect[3] - rect[1]
 #Start the figure
 fig,ax = plt.subplots(1)
 
-for ind in range(frame_tot):
-    frame1 = seq[:,:,ind]
+for ind in range(frame_tot-1):
+    frame_template = seq[:,:,ind]
+    frame1 = seq[:,:,ind+1]
     print(ind)
     p = LucasKanade(frame_template ,frame1, rect,threshold,num_iters)
     rect_x = rect[0] + p[0]

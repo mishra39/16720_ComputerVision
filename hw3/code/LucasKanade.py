@@ -54,7 +54,7 @@ def LucasKanade(It, It1, rect, threshold, num_iters, p0=np.zeros(2)):
 
     num_iter = 0
 
-    while del_p >= threshold:# and num_iter <= num_iters:
+    while del_p >= threshold and num_iter <= num_iters:
 
         num_iter = num_iter + 1
         # Warping with Translation
@@ -70,9 +70,8 @@ def LucasKanade(It, It1, rect, threshold, num_iters, p0=np.zeros(2)):
         It1_interp_x = dx_spline.ev(mesh_yw, mesh_xw)
         It1_interp_y = dy_spline.ev(mesh_yw, mesh_xw)
 
-        I_t_plus_1 = np.vstack((It1_interp_x.flatten(), It1_interp_y.flatten())).T
+        A = np.vstack((It1_interp_x.flatten(), It1_interp_y.flatten())).T
 
-        A = I_t_plus_1
         b = (It_interp - It1_interp).reshape(-1,1)  # Error calculation
 
         H = np.dot(np.transpose(A),A)
