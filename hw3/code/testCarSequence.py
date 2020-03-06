@@ -33,6 +33,10 @@ for ind in range(frame_tot-1):
     p = LucasKanade(frame_template ,frame1, rect,threshold,num_iters)
     rect_x = rect[0] + p[0]
     rect_y = rect[1] + p[1]
+    rect[0] = rect[0] + p[0]
+    rect[1] = rect[1] + p[1]
+    rect[2] = rect[0] + width
+    rect[3] = rect[1] + height
     img_patch = patches.Rectangle((rect_x,rect_y), width, height,linewidth = 2,edgecolor = 'r', facecolor ='none')
 
     fig,ax = plt.subplots(1)

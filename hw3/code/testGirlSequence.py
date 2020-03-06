@@ -21,6 +21,11 @@ frame_eval = [1, 20, 40, 60, 80]
 frame_template = seq[:,:,0]  # Template frame
 rect_all = []
 
+frame_eval = [1, 100, 200, 300, 400]
+rect_orig  = rect
+frame_template = seq[:,:,0]  # Template frame
+rect_all = []
+
 frame_tot = seq.shape[2] # Total number of frames
 width = rect[2]-rect[0]
 height = rect[3] - rect[1]
@@ -28,12 +33,17 @@ height = rect[3] - rect[1]
 #Start the figure
 fig,ax = plt.subplots(1)
 
-for ind in range(frame_tot):
-    frame1 = seq[:,:,ind]
+for ind in range(frame_tot-1):
+    frame_template = seq[:,:,ind]
+    frame1 = seq[:,:,ind+1]
     print(ind)
     p = LucasKanade(frame_template ,frame1, rect,threshold,num_iters)
     rect_x = rect[0] + p[0]
     rect_y = rect[1] + p[1]
+    rect[0] = rect[0] + p[0]
+    rect[1] = rect[1] + p[1]
+    rect[2] = rect[0] + width
+    rect[3] = rect[1] + height
     img_patch = patches.Rectangle((rect_x,rect_y), width, height,linewidth = 2,edgecolor = 'r', facecolor ='none')
 
     fig,ax = plt.subplots(1)
