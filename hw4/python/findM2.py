@@ -9,7 +9,7 @@ import numpy as np
 import submission
 import helper
 
-M2s = np.zeros([3,4,4])
+M2_all = np.zeros([3,4,4])
 pts = np.load('../data/some_corresp.npz')
 pts1 = pts['pts1']
 pts2 = pts['pts2']

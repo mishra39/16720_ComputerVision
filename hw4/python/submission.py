@@ -133,17 +133,47 @@ def epipolarCorrespondence(im1, im2, F, x1, y1):
     rect_size = 10 # Size of the window
 
     # if np.abs(x1) >= rect_size//2 and np.abs(y1) >= rect_size//2:
-    im1_sec = im1[(y1 - rect_size//2): np.rint(y1 + rect_size//2 + 1), (x1 - rect_size//2): (x1 + rect_size//2 + 1),:]  # Section of im1 around x1,y1
+    im1_sec = im1[(y1 - rect_size//2): (y1 + rect_size//2 + 1), (x1 - rect_size//2): (x1 + rect_size//2 + 1),:]  # Section of im1 around x1,y1
 
 
-    im2_h, im2_w,_ = im2.shape # Size of im2
-    # Ensure that the image section lies within the image dimensions
+    im2_h, im2_w,_ = im2.shape # Size of im1
 
     pt1 = np.array([x1, y1, 1]) # homogeneous coordinates of im1
+
     ep_line = np.dot(F,pt1) # Epipolar Line
     ep2_l = ep_line / np.linalg.norm(ep_line)
-    ep2_y = np.array(range(y1-rect_size//2,y1+rect_size//2)) # search coordinates for im2
-    ep2_x = np.rint((ep2_l[1]*ep2_y + ep2_l[2])/ep2_l[0])
+
+    ep2_y = np.arange(im2_h) #np.arange(y1-rect_size//2,y1+rect_size//2,1) # search coordinates for im2
+
+    ep2_x = np.rint(-(ep2_l[1]*ep2_y + ep2_l[2])/ep2_l[0])
+    # pdb.set_trace()
+    # Ensure that the image section lies within the image dimensions
+    im_in = (ep2_y >= rect_size//2) & (ep2_y + rect_size//2 < im2_h ) & (ep2_x >= rect_size//2) & (ep2_x + rect_size//2 < im2_w )
+    valid_y, valid_x = ep2_y[im_in], ep2_x[im_in] # im2 region for comparison
+
+    # Gaussian weight distribution about the center
+    std_dev = 2
+    rect_vec = np.arange(-rect_size//2 , rect_size//2 + 1 ,1)
+    rect_x, rect_y = np.meshgrid(rect_vec, rect_vec)
+
+    gauss_wt = np.dot( (np.exp(-((rect_x**2 + rect_y**2) / (2 * (std_dev**2))))),1)
+    gauss_wt = gauss_wt / np.sqrt(2*np.pi*std_dev**2)
+    gauss_wt = np.sum(gauss_wt)
+    err_val = np.inf
+
+    for i in range(valid_x.shape[0]):
+
+        im2_sec = im2[int(valid_y[i] - rect_size//2): int(valid_y[i] + rect_size//2 + 1), int(valid_x[i] - rect_size//2): int(valid_x[i] + rect_size//2 + 1),:]
+        err = np.linalg.norm((im1_sec-im2_sec)*gauss_wt)
+
+        if err < err_val:
+            err_val = err
+            y2 = valid_y[i]
+            x2 = valid_x[i]
+
+    return x2, y2
+
+
 
 '''
 Q5.1: RANSAC method.
@@ -225,13 +255,13 @@ if __name__ == "__main__":
     pts = np.load('../data/some_corresp.npz')
     pts1 = pts['pts1']
     pts2 = pts['pts2']
-    img1 = plt.imread('../data/im1.png')
-    img2 = plt.imread('../data/im2.png')
-    M = np.max(img1.shape)
+    im1 = plt.imread('../data/im1.png')
+    im2 = plt.imread('../data/im2.png')
+    M = np.max(im1.shape)
 
     F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
     np.savez('q2_1.npz', F, M)
-    # helper.displayEpipolarF(img1, img2, F) # Visualize result
+    # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
     # 3.1
     # import camera instrinsics
@@ -239,3 +269,7 @@ if __name__ == "__main__":
     K1 = K['K1']
     K2 = K['K2']
     E = essentialMatrix(F, K1, K2)
+
+    # 4.1
+    x2, y2 = epipolarCorrespondence(im1, im2, F, x1, y1)
+    # helper.epipolarMatchGUI(im1, im2, F)
