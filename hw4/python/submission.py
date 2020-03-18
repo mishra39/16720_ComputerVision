@@ -6,6 +6,7 @@ Replace 'pass' by your implementation.
 import numpy as np
 import helper
 import pdb
+import math
 import matplotlib.pyplot as plt
 '''
 Q2.1: Eight Point Algorithm
@@ -56,7 +57,44 @@ Q2.2: Seven Point Algorithm
     Output: Farray, a list of estimated fundamental matrix.
 '''
 def sevenpoint(pts1, pts2, M):
-    pass
+
+    A = np.empty((pts1.shape[0],9))
+
+    pts1 = pts1 / M
+    pts2 = pts2 / M
+    x1 = pts1[:,0]
+    y1 = pts1[:,1]
+    x2 = pts2[:,0]
+    y2 = pts2[:,1]
+
+    T = np.array([[1/M, 0, 0],
+                  [0, 1/M, 0],
+                  [0,  0,  1]])
+
+    # Construct A matrix
+    A = np.vstack((x2 * x1, x2 * y1 , x2, y2 * x1,  y2 * y1, y2, x1, y1, np.ones(pts1.shape[0]))).T
+
+    u, s, vh = np.linalg.svd(A) # Find SVD of AtA
+    f1 = vh[-1].reshape(3,3) # Fundamental Matrix is column corresponding to the least singular values
+    f2 = vh[-2].reshape(3,3)
+
+    detF_func = lambda coeff: np.linalg.det(coeff*f1 + (1-coeff)*f2)
+
+    a0 = detF_func(0)
+    a1 = 2*(detF_func(1) - detF_func(-1))/3 - (detF_func(2)-detF_func(-2))/12
+    a2 = (detF_func(1) + detF_func(-1))/2 - a0
+    a3 = (detF_func(1) - detF_func(-1))/2 - a1
+
+    coeff_sol = np.roots([a3,a2,a1,a0])
+
+    F_mat = [coeff*f1 + (1-coeff)*f2 for coeff in coeff_sol]
+
+    F_mat = [helper.refineF(F, pts1, pts2) for F in F_mat]
+
+    # Unscale the fundamental matrix
+    F = [np.dot((np.dot(T.T,F)) , T) for F in F_mat]
+
+    return F
 
 
 '''
@@ -94,6 +132,7 @@ def triangulate(C1, pts1, C2, pts2):
     A4 = np.vstack([C2[1,0] - C2[2,0]*y2, C2[1,1] - C2[2,1]*y2, C2[1,2] - C2[2,2]*y2, C2[1,3] - C2[2,3]*y2]).T
 
     for i in range(x1.shape[0]):
+
         A = np.vstack((A1[i,:], A2[i,:], A3[i,:], A4[i,:]))
         u, s, vh = np.linalg.svd(A)
         wi_hom = vh[-1] # Nx4 vector
@@ -184,26 +223,104 @@ Q5.1: RANSAC method.
             inliers, Nx1 bool vector set to true for inliers
 '''
 def ransacF(pts1, pts2, M, nIters, tol):
-    # Replace pass by your implementation
-    pass
+    max_iters = 100  # the number of iterations to run RANSAC for
+    inlier_tol = 1e-2 # the tolerance value for considering a point to be an inlier
+    max_inliers = -1
+    F = np.empty([3,3]) #3 by 3 empty matrix for the best homograph
 
+    rand_1 = np.empty([2,4])
+    rand_2 = np.empty([2,4])
+    max_inliers = -1
+
+    x1 = pts1[:,0]
+    y1 = pts1[:,1]
+    x2 = pts2[:,0]
+    y2 = pts2[:,1]
+
+    pts1_hom = np.hstack((pts1,np.ones([pts1.shape[0],1])))
+    pts2_hom = np.hstack((pts2,np.ones([pts1.shape[0],1])))
+
+    for ind in range(max_iters):
+        tot_inliers = 0
+        ind_rand = np.random.choice(pts1.shape[0],7)
+
+        rand_1 = pts1[ind_rand,:]
+        rand_2 = pts2[ind_rand,:]
+
+        F = eightpoint(rand_1, rand_2, M)
+
+        pts2_pred = np.dot(F,pts1_hom)
+
+        err = np.linalg.norm(pts2_hom - pts2_pred)
+
+        inliers_num = err < inlier_tol
+        tot_inliers[inliers_num]
+        if tot_inliers > max_inliers:
+            bestF = F
+            max_inliers = tot_inliers
+            inliers = inliers_num
+
+
+    return bestF, inliers
 '''
 Q5.2: Rodrigues formula.
     Input:  r, a 3x1 vector
     Output: R, a rotation matrix
 '''
 def rodrigues(r):
-    # Replace pass by your implementation
-    pass
 
+    R = np.empty(3,3)
+    theta = np.linalg.norm(r)
+
+    if np.abs(theta) < 1e-2:
+        R = np.eye(3)
+
+    else:
+        u = r/theta
+        u_x = np.array([0, -u[2], u[1]],[u[2], 0, -u[0]],[-u[1],u[0],0])
+        R = np.eye(3)*np.cos(theta) +  (1-np.cos(theta))*(np.dot(u,u.T)) + u_x*np.sin(theta)
+
+    return R
 '''
 Q5.2: Inverse Rodrigues formula.
     Input:  R, a rotation matrix
     Output: r, a 3x1 vector
 '''
 def invRodrigues(R):
-    # Replace pass by your implementation
-    pass
+    zero_tol = 1e-2
+    A = (R - R.T)/2
+    rho = np.array([[A[2,1]],[A[0,2]],[A[1,0]]])
+    s = np.linalg.norm(rho)
+    c = (np.trace(R) -1)/2
+
+    if s < zero_tol & c==1:
+        r = np.zeros((3,1))
+
+    elif s < zero_tol & c == -1:
+        v_tmp = R + np.eye(3)
+        for i in range(R.shape[0]):
+            if np.sum(v_tmp[:,i]) !=0:
+                v = v_tmp[:,i]
+                break
+
+        u = v/np.linalg.norm(v)
+        u_pi = u*np.pi
+        print(u_pi.shape)
+
+        if (np.linalg.norm(u_pi) == np.pi) & ((np.abs(u_pi[0]) < zero_tol & np.abs(u_pi[1]) < zero_tol & u_pi[2] < 0) | (np.abs(u_pi[0])< zero_tol & u_pi[1] < zero_tol) |(u_pi[0] < zero_tol)):
+            r = -u_pi
+
+        else:
+            r = u_pi
+
+
+    else:
+        u = rho/s
+        theta = np.arctan2(s,c)
+        r = u*theta
+
+    return r
+
 
 '''
 Q5.3: Rodrigues residual.
@@ -259,17 +376,19 @@ if __name__ == "__main__":
     im2 = plt.imread('../data/im2.png')
     M = np.max(im1.shape)
 
-    F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
-    np.savez('q2_1.npz', F, M)
-    # helper.displayEpipolarF(im1, im2, F) # Visualize result
+    F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
 
-    # 3.1
-    # import camera instrinsics
-    K = np.load('../data/intrinsics.npz')
-    K1 = K['K1']
-    K2 = K['K2']
-    E = essentialMatrix(F, K1, K2)
+    # F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
+    # np.savez('q2_1.npz', F, M)
+    # # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
-    # 4.1
-    x2, y2 = epipolarCorrespondence(im1, im2, F, x1, y1)
-    # helper.epipolarMatchGUI(im1, im2, F)
+    # # 3.1
+    # # import camera instrinsics
+    # K = np.load('../data/intrinsics.npz')
+    # K1 = K['K1']
+    # K2 = K['K2']
+    # E = essentialMatrix(F, K1, K2)
+
+    # # 4.1
+    # x2, y2 = epipolarCorrespondence(im1, im2, F, x1, y1)
+    # # helper.epipolarMatchGUI(im1, im2, F)
