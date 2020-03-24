@@ -3,11 +3,12 @@ Q4.2:
     1. Integrating everything together.
     2. Loads necessary files from ../data/ and visualizes 3D reconstruction using scatter
 '''
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 import submission
 import helper
+
 
 pts = np.load('../data/some_corresp.npz')
 pts1 = pts['pts1']
@@ -48,21 +49,20 @@ err_val = np.inf
 for i in range(M2_all.shape[2]):
 
     C2 = np.dot(K2 , M2_all[:,:,i])
-    w,err = submission.triangulate(C1, np.hstack((x1,y1)) , C2, np.hstack((x2,y2)))
+    w,err = submission.triangulate(C1, pts1, C2, pts2)
 
-    if np.min(w[:,-1] > 0):
-        break
-    # if err < err_val:
-    #     err_val = err
-    #     M2 = M2_all[:,:,i]
-    #     C2_best = C2
-    #     w_best = w
-w_best = w
+    if err < err_val:
+        err_val = err
+        M2 = M2_all[:,:,i]
+        C2_best = C2
+        w_best = w
+
+np.savez('q4_2.npz', F = F, M1 = M1, M2 = M2, C1 = C1, C2 = C2_best)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection = '3d')
-ax.scatter(w_best[:,0],w_best[:,1],w_best[:,2])
+ax.scatter(w_best[:,0],w_best[:,1],w_best[:,2],s=4)
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Z')
-plt.savefig('fig.jpg')
 plt.show()
+plt.savefig('fig_4_2.jpg')

@@ -6,7 +6,7 @@ Replace 'pass' by your implementation.
 import numpy as np
 import helper
 import pdb
-import math
+import scipy.optimize
 import matplotlib.pyplot as plt
 '''
 Q2.1: Eight Point Algorithm
@@ -145,7 +145,6 @@ def triangulate(C1, pts1, C2, pts2):
     pts1_hat = np.dot(C1 , w_hom.T)
     pts2_hat = np.dot(C2 , w_hom.T)
 
-    # pdb.set_trace()
     # Normalizing
     p1_hat_norm = (np.divide(pts1_hat[0:2,:] , pts1_hat[2,:])).T
     p2_hat_norm = (np.divide(pts2_hat[0:2,:] , pts2_hat[2,:])).T
@@ -167,13 +166,11 @@ Q4.1: 3D visualization of the temple images.
 
 '''
 def epipolarCorrespondence(im1, im2, F, x1, y1):
-
     # Extract window from im1 around x1, y1
-    rect_size = 10 # Size of the window
-
-    # if np.abs(x1) >= rect_size//2 and np.abs(y1) >= rect_size//2:
+    rect_size = 20 # Size of the window
+    x1 = int(x1)
+    y1 = int(y1)
     im1_sec = im1[(y1 - rect_size//2): (y1 + rect_size//2 + 1), (x1 - rect_size//2): (x1 + rect_size//2 + 1),:]  # Section of im1 around x1,y1
-
 
     im2_h, im2_w,_ = im2.shape # Size of im1
 
@@ -181,36 +178,31 @@ def epipolarCorrespondence(im1, im2, F, x1, y1):
 
     ep_line = np.dot(F,pt1) # Epipolar Line
     ep2_l = ep_line / np.linalg.norm(ep_line)
+    a,b,c = ep2_l
 
-    ep2_y = np.arange(im2_h) #np.arange(y1-rect_size//2,y1+rect_size//2,1) # search coordinates for im2
-
+    ep2_y = np.arange(im2_h)
     ep2_x = np.rint(-(ep2_l[1]*ep2_y + ep2_l[2])/ep2_l[0])
-    # pdb.set_trace()
-    # Ensure that the image section lies within the image dimensions
-    im_in = (ep2_y >= rect_size//2) & (ep2_y + rect_size//2 < im2_h ) & (ep2_x >= rect_size//2) & (ep2_x + rect_size//2 < im2_w )
-    valid_y, valid_x = ep2_y[im_in], ep2_x[im_in] # im2 region for comparison
 
     # Gaussian weight distribution about the center
-    std_dev = 2
     rect_vec = np.arange(-rect_size//2 , rect_size//2 + 1 ,1)
     rect_x, rect_y = np.meshgrid(rect_vec, rect_vec)
-
+    std_dev = 7
     gauss_wt = np.dot( (np.exp(-((rect_x**2 + rect_y**2) / (2 * (std_dev**2))))),1)
     gauss_wt = gauss_wt / np.sqrt(2*np.pi*std_dev**2)
     gauss_wt = np.sum(gauss_wt)
-    err_val = np.inf
+    err_val = 1e4
 
-    for i in range(valid_x.shape[0]):
+    for y2 in range((y1 - rect_size//2), (y1 + rect_size//2 + 1)):
+        x2 = int((-b*y2-c)/a)
+        if (x2 >= rect_size//2 and x2 + rect_size//2 < im2_w and y2 >=rect_size//2 and y2 + rect_size//2 < im2_h):
+            im2_sec = im2[y2-rect_size//2:y2+rect_size//2+1,x2-rect_size//2:x2+rect_size//2+1,:]
+            err = np.linalg.norm((im1_sec-im2_sec)*gauss_wt)
+            if err < err_val:
+                err_val = err
+                y2_best = y2
+                x2_best = x2
 
-        im2_sec = im2[int(valid_y[i] - rect_size//2): int(valid_y[i] + rect_size//2 + 1), int(valid_x[i] - rect_size//2): int(valid_x[i] + rect_size//2 + 1),:]
-        err = np.linalg.norm((im1_sec-im2_sec)*gauss_wt)
-
-        if err < err_val:
-            err_val = err
-            y2 = valid_y[i]
-            x2 = valid_x[i]
-
-    return x2, y2
+    return x2_best, y2_best
 
 
 
@@ -223,24 +215,18 @@ Q5.1: RANSAC method.
             inliers, Nx1 bool vector set to true for inliers
 '''
 def ransacF(pts1, pts2, M, nIters, tol):
-    max_iters = 100  # the number of iterations to run RANSAC for
-    inlier_tol = 1e-2 # the tolerance value for considering a point to be an inlier
     max_inliers = -1
     F = np.empty([3,3]) #3 by 3 empty matrix for the best homograph
 
-    rand_1 = np.empty([2,4])
-    rand_2 = np.empty([2,4])
+    rand_1 = np.empty([7,2])
+    rand_2 = np.empty([7,2])
     max_inliers = -1
 
-    x1 = pts1[:,0]
-    y1 = pts1[:,1]
-    x2 = pts2[:,0]
-    y2 = pts2[:,1]
+    pts1_hom = np.vstack((pts1.T,np.ones([1,pts1.shape[0]])))
+    pts2_hom = np.vstack((pts2.T,np.ones([1,pts1.shape[0]])))
 
-    pts1_hom = np.hstack((pts1,np.ones([pts1.shape[0],1])))
-    pts2_hom = np.hstack((pts2,np.ones([pts1.shape[0],1])))
-
-    for ind in range(max_iters):
+    for ind in range(nIters):
+        print(ind)
         tot_inliers = 0
         ind_rand = np.random.choice(pts1.shape[0],7)
 
@@ -248,18 +234,17 @@ def ransacF(pts1, pts2, M, nIters, tol):
         rand_2 = pts2[ind_rand,:]
 
         F = eightpoint(rand_1, rand_2, M)
+        pred_x2_hom = np.dot(F,pts1_hom)
+        pred_x2  = pred_x2_hom / np.sqrt(np.sum(pred_x2_hom[:2,:]**2,axis=0))
 
-        pts2_pred = np.dot(F,pts1_hom)
-
-        err = np.linalg.norm(pts2_hom - pts2_pred)
-
-        inliers_num = err < inlier_tol
-        tot_inliers[inliers_num]
+        err = abs(np.sum(pts2_hom*pred_x2,axis=0))
+        inliers_num = err < tol
+        tot_inliers = inliers_num[inliers_num.T].shape[0]
         if tot_inliers > max_inliers:
+            print('in if')
             bestF = F
             max_inliers = tot_inliers
-            inliers = inliers_num
-
+            inliers = inliers_num[inliers_num.T]
 
     return bestF, inliers
 '''
@@ -269,15 +254,15 @@ Q5.2: Rodrigues formula.
 '''
 def rodrigues(r):
 
-    R = np.empty(3,3)
+    R = np.empty((3,3))
     theta = np.linalg.norm(r)
 
-    if np.abs(theta) < 1e-2:
+    if theta == 0:
         R = np.eye(3)
 
     else:
         u = r/theta
-        u_x = np.array([0, -u[2], u[1]],[u[2], 0, -u[0]],[-u[1],u[0],0])
+        u_x = np.array([[0, -u[2], u[1]],[u[2], 0, -u[0]],[-u[1],u[0],0]])
         R = np.eye(3)*np.cos(theta) +  (1-np.cos(theta))*(np.dot(u,u.T)) + u_x*np.sin(theta)
 
     return R
@@ -289,37 +274,38 @@ Q5.2: Inverse Rodrigues formula.
 def invRodrigues(R):
     zero_tol = 1e-2
     A = (R - R.T)/2
-    rho = np.array([[A[2,1]],[A[0,2]],[A[1,0]]])
+    rho = np.array(A[[2, 0, 1], [1, 2, 0]])[:, None]
     s = np.linalg.norm(rho)
     c = (np.trace(R) -1)/2
 
-    if s < zero_tol & c==1:
+    if s < zero_tol and (c - 1) < zero_tol:
         r = np.zeros((3,1))
+        return r
 
-    elif s < zero_tol & c == -1:
+    elif s < zero_tol and (c+1) < zero_tol:
         v_tmp = R + np.eye(3)
         for i in range(R.shape[0]):
-            if np.sum(v_tmp[:,i]) !=0:
+            if np.count_nonzero(v_tmp[:,i]) > 0:
                 v = v_tmp[:,i]
                 break
 
         u = v/np.linalg.norm(v)
         u_pi = u*np.pi
-        print(u_pi.shape)
 
-        if (np.linalg.norm(u_pi) == np.pi) & ((np.abs(u_pi[0]) < zero_tol & np.abs(u_pi[1]) < zero_tol & u_pi[2] < 0) | (np.abs(u_pi[0])< zero_tol & u_pi[1] < zero_tol) |(u_pi[0] < zero_tol)):
+        if (np.linalg.norm(u_pi) == np.pi) and (u_pi[0,0] == u_pi[1,0] == 0 and u_pi[2,0] < 0) or (u_pi[0,0] == 0 and u_pi[1,0] < 0) or (u_pi[0,0] < 0):
             r = -u_pi
+            return r
 
         else:
             r = u_pi
+            return  r
 
 
     else:
         u = rho/s
         theta = np.arctan2(s,c)
         r = u*theta
-
-    return r
+        return r
 
 
 '''
@@ -333,8 +319,22 @@ Q5.3: Rodrigues residual.
     Output: residuals, 4N x 1 vector, the difference between original and estimated projections
 '''
 def rodriguesResidual(K1, M1, p1, K2, p2, x):
-    # Replace pass by your implementation
-    pass
+    P = x[:-6]
+    P = P.reshape((P.shape[0]//3,3))
+    r2 = x[-6:-3]
+    t2 = x[-3:,None]
+    R2 = rodrigues(r2[:,None])
+    M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
+    P = np.vstack((P.T, np.ones((1,P.shape[0]))))
+    p1_hat = np.dot(np.dot(K1,M1),P)
+    p2_hat = np.dot(np.dot(K2,M2),P)
+    p1_hat = (p1_hat[:2,:]/p1_hat[2,:]).T
+    p2_hat = (p2_hat[:2,:]/p2_hat[2,:]).T
+
+    # pdb.set_trace()
+    residuals = np.concatenate([(p1-p1_hat).reshape([-1]),(p2-p2_hat).reshape([-1])])
+
+    return residuals
 
 '''
 Q5.3 Bundle adjustment.
@@ -349,8 +349,29 @@ Q5.3 Bundle adjustment.
             P2, the optimized 3D coordinates of points
 '''
 def bundleAdjustment(K1, M1, p1, K2, M2_init, p2, P_init):
-    # Replace pass by your implementation
-    pass
+
+    R2 = M2_init[:, 0:3]
+    t2 = M2_init[:, 3]
+    print('here1')
+    r2 = invRodrigues(R2)
+    fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
+    print('here2')
+    x0 = P_init.flatten()
+    x0 = np.append(x0, r2.flatten())
+    x0 = np.append(x0, t2.flatten())
+
+    print('here3')
+    x_opt = scipy.optimize.leastsq(fun,x0)
+    P2 = x_opt[:-6]
+    r2 = x_opt[-6:-3]
+    t2 = x_opt[-3:]
+    print('here4')
+    R2 = rodrigues(r2)
+
+    M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
+
+    return M2,P2
+
 '''
 Q6.1 Multi-View Reconstruction of keypoints.
     Input:  C1, the 3x4 camera matrix
@@ -376,19 +397,62 @@ if __name__ == "__main__":
     im2 = plt.imread('../data/im2.png')
     M = np.max(im1.shape)
 
-    F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
+    # F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
 
-    # F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
-    # np.savez('q2_1.npz', F, M)
-    # # helper.displayEpipolarF(im1, im2, F) # Visualize result
+    F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
+    np.savez('q2_1.npz', F=F, M=M)
+    # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
-    # # 3.1
-    # # import camera instrinsics
-    # K = np.load('../data/intrinsics.npz')
-    # K1 = K['K1']
-    # K2 = K['K2']
-    # E = essentialMatrix(F, K1, K2)
+    # 3.1
+    # import camera instrinsics
+    K = np.load('../data/intrinsics.npz')
+    K1 = K['K1']
+    K2 = K['K2']
+    E = essentialMatrix(F, K1, K2)
 
-    # # 4.1
+    # 4.1
+    # x1 = pts1[10,0]
+    # y1 = pts1[10,1]
     # x2, y2 = epipolarCorrespondence(im1, im2, F, x1, y1)
-    # # helper.epipolarMatchGUI(im1, im2, F)
+    # sel_pts1 , sel_pts2 = helper.epipolarMatchGUI(im1, im2, F)
+    # np.savez('q4_1.npz', F = F, pts1 = sel_pts1, pts2 = sel_pts2)
+
+    # 4.2
+
+
+    # #5.1
+    pts = np.load('../data/some_corresp_noisy.npz')
+    pts1 = pts['pts1']
+    pts2 = pts['pts2']
+    # im1 = plt.imread('../data/im1.png')
+    # im2 = plt.imread('../data/im2.png')
+    # M = np.max(im1.shape)
+    nIters = 1000
+    tol = 1
+    F,inliers = ransacF(pts1, pts2, M, nIters, tol)
+    helper.displayEpipolarF(im1,im2,F)
+
+    # #5.3
+
+    # M1 = np.eye(3)
+    # M1 = np.hstack((M1, np.zeros([3,1])))
+    # E = essentialMatrix(F, K1, K2)
+    # M2_all = helper.camera2(E)
+
+    # C1 = np.dot(K1 , M1)
+    # err_val = np.inf
+
+    # for i in range(M2_all.shape[2]):
+
+    #     C2 = np.dot(K2 , M2_all[:,:,i])
+    #     w,err = triangulate(C1, pts1, C2, pts2)
+
+    #     if err < err_val:
+    #         err_val = err
+    #         M2 = M2_all[:,:,i]
+    #         C2_best = C2
+    #         w_best = w
+
+    # P_init,err = triangulate(C1, pts1, C2_best, pts2)
+    # M2_out, P2 = bundleAdjustment(K1, M1, pts1, K2, M2, pts2, P_init)
+

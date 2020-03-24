@@ -160,6 +160,9 @@ def camera2(E):
     return M2s
 
 def epipolarMatchGUI(I1, I2, F):
+    select_p1 = []
+    select_p2 = []
+
     e1, e2 = _epipoles(F)
 
     sy, sx, _ = I2.shape
@@ -206,3 +209,9 @@ def epipolarMatchGUI(I1, I2, F):
         x2, y2 = sub.epipolarCorrespondence(I1, I2, F, xc, yc)
         ax2.plot(x2, y2, 'ro', MarkerSize=8, linewidth=2)
         plt.draw()
+        select_p1.append([xc,yc])
+        select_p2.append([x2,y2])
+    select_p1 = np.array(select_p1)
+    select_p2 = np.array(select_p2)
+
+    return select_p1, select_p2
