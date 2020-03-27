@@ -204,8 +204,6 @@ def epipolarCorrespondence(im1, im2, F, x1, y1):
 
     return x2_best, y2_best
 
-
-
 '''
 Q5.1: RANSAC method.
     Input:  pts1, Nx2 Matrix
@@ -253,8 +251,7 @@ Q5.2: Rodrigues formula.
     Output: R, a rotation matrix
 '''
 def rodrigues(r):
-
-    R = np.empty((3,3))
+    R = np.empty((3,3),dtype=float)
     theta = np.linalg.norm(r)
 
     if theta == 0:
@@ -307,7 +304,6 @@ def invRodrigues(R):
         r = u*theta
         return r
 
-
 '''
 Q5.3: Rodrigues residual.
     Input:  K1, the intrinsics of camera 1
@@ -319,21 +315,30 @@ Q5.3: Rodrigues residual.
     Output: residuals, 4N x 1 vector, the difference between original and estimated projections
 '''
 def rodriguesResidual(K1, M1, p1, K2, p2, x):
-    P = x[:-6]
-    P = P.reshape((P.shape[0]//3,3))
-    r2 = x[-6:-3]
-    t2 = x[-3:,None]
-    R2 = rodrigues(r2[:,None])
-    M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
-    P = np.vstack((P.T, np.ones((1,P.shape[0]))))
-    p1_hat = np.dot(np.dot(K1,M1),P)
-    p2_hat = np.dot(np.dot(K2,M2),P)
-    p1_hat = (p1_hat[:2,:]/p1_hat[2,:]).T
-    p2_hat = (p2_hat[:2,:]/p2_hat[2,:]).T
+    P = x[:-6].reshape(-1,3)
+    r2 = x[-6:-3].reshape(3,1)
+    t2 = x[-3:].reshape(3,1)
 
-    # pdb.set_trace()
-    residuals = np.concatenate([(p1-p1_hat).reshape([-1]),(p2-p2_hat).reshape([-1])])
+    R2 = rodrigues(r2)
+    M2 = np.hstack((R2,t2)).reshape(3,4) # Extrinsics of camera 2
+    C1 = np.dot(K1,M1)
+    C2 = np.dot(K2,M2)
+    P_hom = np.vstack((P.T, np.ones((1,P.shape[0]))))
 
+    p1_hat = np.zeros((2, P_hom.shape[1]))
+    p2_hat = np.zeros((2, P_hom.shape[1]))
+
+    x1_hom = np.dot(C1,P_hom)
+    x2_hom = np.dot(C2,P_hom)
+
+    p1_hat[0, :] = (x1_hom[0, :]/ x1_hom[2, :])
+    p1_hat[1, :] = (x1_hom[1, :]/x1_hom[2, :])
+    p2_hat[0,:] = (x2_hom[0, :]/x2_hom[2, :])
+    p2_hat[1, :] = (x2_hom[1, :]/ x2_hom[2, :])
+    p1_hat = p1_hat.T
+    p2_hat = p2_hat.T
+
+    residuals = np.concatenate([(p1 - p1_hat).reshape(-1),(p2 - p2_hat).reshape(-1)])
     return residuals
 
 '''
@@ -349,27 +354,24 @@ Q5.3 Bundle adjustment.
             P2, the optimized 3D coordinates of points
 '''
 def bundleAdjustment(K1, M1, p1, K2, M2_init, p2, P_init):
-
-    R2 = M2_init[:, 0:3]
-    t2 = M2_init[:, 3]
-    print('here1')
-    r2 = invRodrigues(R2)
+    R2_0 = M2_init[:, 0:3]
+    t2_0 = M2_init[:, 3]
+    r2_0 = invRodrigues(R2_0)
     fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
     print('here2')
     x0 = P_init.flatten()
-    x0 = np.append(x0, r2.flatten())
-    x0 = np.append(x0, t2.flatten())
+    x0 = np.append(x0, r2_0.flatten())
+    x0 = np.append(x0, t2_0.flatten())
 
-    print('here3')
-    x_opt = scipy.optimize.leastsq(fun,x0)
-    P2 = x_opt[:-6]
-    r2 = x_opt[-6:-3]
-    t2 = x_opt[-3:]
+    x_opt, _ = scipy.optimize.leastsq(fun,x0)
     print('here4')
+    P2 = x_opt[0:-6].reshape(-1,3)
+    r2 = x_opt[-6:-3].reshape(3,1)
+    t2 = x_opt[-3:].reshape(3,1)
+
     R2 = rodrigues(r2)
 
     M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
-
     return M2,P2
 
 '''
@@ -384,31 +386,36 @@ Q6.1 Multi-View Reconstruction of keypoints.
             err, the reprojection error.
 '''
 def MultiviewReconstruction(C1, pts1, C2, pts2, C3, pts3, Thres):
-    # Replace pass by your implementation
-    pass
+
+    P12, err12 = triangulate(C1, pts1[:,:2], C2, pts2[:,:2])
+    # P23, err23 = triangulate(C2, pts2[:,:2], C3, pts3[:,:2])
+    # P13, err13 = triangulate(C1, pts1[:,:2], C2, pts3[:,:2])
+
+    return P12, err12
 
 
 if __name__ == "__main__":
-    # 2.1
-    pts = np.load('../data/some_corresp.npz')
-    pts1 = pts['pts1']
-    pts2 = pts['pts2']
-    im1 = plt.imread('../data/im1.png')
-    im2 = plt.imread('../data/im2.png')
-    M = np.max(im1.shape)
+
+    # # 2.1
+    # pts = np.load('../data/some_corresp.npz')
+    # pts1 = pts['pts1']
+    # pts2 = pts['pts2']
+    # im1 = plt.imread('../data/im1.png')
+    # im2 = plt.imread('../data/im2.png')
+    # M = np.max(im1.shape)
 
     # F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
 
-    F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
-    np.savez('q2_1.npz', F=F, M=M)
+    # F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
+    # np.savez('q2_1.npz', F=F, M=M)
     # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
-    # 3.1
+    # # 3.1
     # import camera instrinsics
-    K = np.load('../data/intrinsics.npz')
-    K1 = K['K1']
-    K2 = K['K2']
-    E = essentialMatrix(F, K1, K2)
+    # K = np.load('../data/intrinsics.npz')
+    # K1 = K['K1']
+    # K2 = K['K2']
+    # E = essentialMatrix(F, K1, K2)
 
     # 4.1
     # x1 = pts1[10,0]
@@ -417,22 +424,22 @@ if __name__ == "__main__":
     # sel_pts1 , sel_pts2 = helper.epipolarMatchGUI(im1, im2, F)
     # np.savez('q4_1.npz', F = F, pts1 = sel_pts1, pts2 = sel_pts2)
 
-    # 4.2
+    # # 4.2
 
 
-    # #5.1
-    pts = np.load('../data/some_corresp_noisy.npz')
-    pts1 = pts['pts1']
-    pts2 = pts['pts2']
+    # # 5.1
+    # pts = np.load('../data/some_corresp_noisy.npz')
+    # pts1 = pts['pts1']
+    # pts2 = pts['pts2']
     # im1 = plt.imread('../data/im1.png')
     # im2 = plt.imread('../data/im2.png')
     # M = np.max(im1.shape)
-    nIters = 1000
-    tol = 1
-    F,inliers = ransacF(pts1, pts2, M, nIters, tol)
-    helper.displayEpipolarF(im1,im2,F)
+    # nIters = 10
+    # tol = 1
+    # F,inliers = ransacF(pts1, pts2, M, nIters, tol)
+    # helper.displayEpipolarF(im1,im2,F)
 
-    # #5.3
+    # # 5.3
 
     # M1 = np.eye(3)
     # M1 = np.hstack((M1, np.zeros([3,1])))
@@ -456,3 +463,56 @@ if __name__ == "__main__":
     # P_init,err = triangulate(C1, pts1, C2_best, pts2)
     # M2_out, P2 = bundleAdjustment(K1, M1, pts1, K2, M2, pts2, P_init)
 
+    # 6.1
+    time_0 = np.load('../data/q6/time0.npz')
+    pts1 = time_0['pts1'] # Nx3 matrix
+    pts2 = time_0['pts2'] # Nx3 matrix
+    pts3 = time_0['pts3'] # Nx3 matrix
+    M1_0 = time_0['M1']
+    M2_0 = time_0['M2']
+    M3_0 = time_0['M3']
+    K1_0 = time_0['K1']
+    K2_0 = time_0['K2']
+    K3_0 = time_0['K3']
+    C1_0 = np.dot(K1_0,M1_0)
+    C2_0 = np.dot(K1_0,M2_0)
+    C3_0 = np.dot(K1_0,M3_0)
+    Thres = 575
+    P_mv, err_mv = MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
+    M2_opt,P2_opt = bundleAdjustment(K2_0, M2_0, pts2[:,:2], K3_0, M3_0, pts3[:,:2], P_mv)
+    helper.plot_3d_keypoint(P2_opt)
+
+    # #bundleAdjustment
+    # R2_0 = M2_init[:, 0:3]
+    # t2_0 = M2_init[:, 3]
+    # r2_0 = invRodrigues(R2_0)
+    # fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
+    # print('here2')
+    # x0 = P_init.flatten()
+    # x0 = np.append(x0, r2_0.flatten())
+    # x0 = np.append(x0, t2_0.flatten())
+
+    # x_opt, _ = scipy.optimize.leastsq(fun,x0)
+    # print('here4')
+    # P2 = x_opt[0:-6].reshape(-1,3)
+    # r2 = x_opt[-6:-3].reshape(3,1)
+    # t2 = x_opt[-3:].reshape(3,1)
+
+    # R2 = rodrigues(r2)
+
+    # M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
+    # return M2,P2
+    # # M2_out, P2 = bundleAdjustment(K1, M1, pts1, K2, M2, pts2, P_init)
+    # img = plt.imread('../data/q6/cam1_time0.jpg')
+    # helper.visualize_keypoints(img, pts1, 575)
+
+
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection = '3d')
+    # ax.scatter(P2[:,0],P2[:,1],P2[:,2],c='b')
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+    # plt.show()
+    # plt.savefig('fig_5_3.jpg')
