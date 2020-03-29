@@ -355,23 +355,51 @@ Q5.3 Bundle adjustment.
             P2, the optimized 3D coordinates of points
 '''
 def bundleAdjustment(K1, M1, p1, K2, M2_init, p2, P_init):
-    R2_0 = M2_init[:, 0:3]
-    t2_0 = M2_init[:, 3]
-    r2_0 = invRodrigues(R2_0)
-    fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
-    x0 = P_init.flatten()
-    x0 = np.append(x0, r2_0.flatten())
-    x0 = np.append(x0, t2_0.flatten())
+    M2, P = None, None
+    R=M2_init[:,0:3]
+    r=invRodrigues(R)
+    t=M2_init[:,3]
+    x=np.hstack((P_init.flatten(),r.flatten(),t))   #x: 3N+6:   P_init.flatten: 3*N  r.flatten: 3*1, t: 3*1
+    pack=(K1, M1, p1, K2, p2)
+    err_original=error(x, K1, M1, p1, K2, p2)
+    print('original error',err_original)
+    print('start optimize')
+    response = scipy.optimize.minimize(fun=error, args=pack, x0=x)
+    print('finish optimize')
+    bestx=response['x']
 
-    x_opt, _ = scipy.optimize.leastsq(fun,x0)
-    P2 = x_opt[0:-6].reshape(-1,3)
-    r2 = x_opt[-6:-3].reshape(3,1)
-    t2 = x_opt[-3:].reshape(3,1)
+    M=bestx.shape[0]
+    P_optimized=bestx[:M-6]
+    r=bestx[M-6:M-3]
+    t=bestx[M-3:M]
+    R=rodrigues(r)
+    M2=np.hstack((R,t[:,None]))
+    err_final=error(bestx, K1, M1, p1, K2, p2)
+    print('optimized error',err_final)
+    return M2,P_optimized
 
-    R2 = rodrigues(r2)
+def error(x, K1, M1, p1, K2, p2):
+        value=rodriguesResidual(K1, M1, p1, K2, p2, x)
+        error=sum(value**2)
+        # print('error',error)
+        return error
+    # R2_0 = M2_init[:, 0:3]
+    # t2_0 = M2_init[:, 3]
+    # r2_0 = invRodrigues(R2_0)
+    # fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
+    # x0 = P_init.flatten()
+    # x0 = np.append(x0, r2_0.flatten())
+    # x0 = np.append(x0, t2_0.flatten())
 
-    M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
-    return M2,P2
+    # x_opt, _ = scipy.optimize.leastsq(fun,x0)
+    # P2 = x_opt[0:-6].reshape(-1,3)
+    # r2 = x_opt[-6:-3].reshape(3,1)
+    # t2 = x_opt[-3:].reshape(3,1)
+
+    # R2 = rodrigues(r2)
+
+    # M2 = np.hstack((R2,t2)) # Extrinsics of camera 2
+    # return M2,P2
 
 '''
 Q6.1 Multi-View Reconstruction of keypoints.
@@ -467,51 +495,51 @@ if __name__ == "__main__":
             w_best = w
 
     P_init,err = triangulate(C1, pts1[inliers,:], C2_best, pts2[inliers,:])
-    print('Original reprojection error: ', err)
-    print('Original M_2: ', M2)
+    # print('Original reprojection error: ', err)
+    # print('Original M_2: ', M2)
     M2_opt, P2 = bundleAdjustment(K1, M1, pts1[inliers,:], K2, M2, pts2[inliers,:], P_init)
 
-    C2_opt = np.dot(K2, M2_opt)
-    w_hom = np.hstack((P2,np.ones([P2.shape[0],1])))
-    C2 = np.dot(K2, M2)
-    err_opt = 0
+        # C2_opt = np.dot(K2, M2_opt)
+        # w_hom = np.hstack((P2,np.ones([P2.shape[0],1])))
+        # C2 = np.dot(K2, M2)
+        # err_opt = 0
 
-    # Reprojecting
-    for i in range(pts1[inliers,:].shape[0]):
-        pts1_hat = np.dot(C1 , w_hom[i,:].T)
-        pts2_hat = np.dot(C2_opt , w_hom[i,:].T)
+        # # Reprojecting
+        # for i in range(pts1[inliers,:].shape[0]):
+        #     pts1_hat = np.dot(C1 , w_hom[i,:].T)
+        #     pts2_hat = np.dot(C2_opt , w_hom[i,:].T)
 
-        # Normalizing
-        p1_hat_norm = (np.divide(pts1_hat[0:2] , pts1_hat[2])).T
-        p2_hat_norm = (np.divide(pts2_hat[0:2] , pts2_hat[2])).T
-        err1 = np.square(pts1[:,0] - p1_hat_norm[0]) + np.square(pts1[:,1] - p1_hat_norm[0])
-        err2 = np.square(pts2[:,0] - p2_hat_norm[0]) + np.square(pts2[:,1] - p2_hat_norm[0])
-        err_opt += np.sum((p1_hat_norm - pts1[i])**2 + (p2_hat_norm - pts2[i])**2)
+        #     # Normalizing
+        #     p1_hat_norm = (np.divide(pts1_hat[0:2] , pts1_hat[2])).T
+        #     p2_hat_norm = (np.divide(pts2_hat[0:2] , pts2_hat[2])).T
+        #     err1 = np.square(pts1[:,0] - p1_hat_norm[0]) + np.square(pts1[:,1] - p1_hat_norm[0])
+        #     err2 = np.square(pts2[:,0] - p2_hat_norm[0]) + np.square(pts2[:,1] - p2_hat_norm[0])
+        #     err_opt += np.sum((p1_hat_norm - pts1[i])**2 + (p2_hat_norm - pts2[i])**2)
 
-    print('Error with optimized 3D points: ', err_opt )
-    print('M2 optimized: ', M2_opt)
+        # print('Error with optimized 3D points: ', err_opt )
+        # # print('M2 optimized: ', M2_opt)
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection = '3d')
-    ax.set_xlim3d(np.min(P_init[:,0]),np.max(P_init[:,0]))
-    ax.set_ylim3d(np.min(P_init[:,1]),np.max(P_init[:,1]))
-    ax.set_zlim3d(np.min(P_init[:,2]),np.max(P_init[:,2]))
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.scatter(P_init[:,0],P_init[:,1],P_init[:,2])
-    plt.show()
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection = '3d')
+        # ax.set_xlim3d(np.min(P_init[:,0]),np.max(P_init[:,0]))
+        # ax.set_ylim3d(np.min(P_init[:,1]),np.max(P_init[:,1]))
+        # ax.set_zlim3d(np.min(P_init[:,2]),np.max(P_init[:,2]))
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+        # ax.set_zlabel('Z')
+        # ax.scatter(P_init[:,0],P_init[:,1],P_init[:,2])
+        # plt.show()
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection = '3d')
-    ax.set_xlim3d(np.min(P2[:,0]),np.max(P2[:,0]))
-    ax.set_ylim3d(np.min(P2[:,1]),np.max(P2[:,1]))
-    ax.set_zlim3d(np.min(P2[:,2]),np.max(P2[:,2]))
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.scatter(P2[:,0],P2[:,1],P2[:,2])
-    plt.show()
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection = '3d')
+        # ax.set_xlim3d(np.min(P2[:,0]),np.max(P2[:,0]))
+        # ax.set_ylim3d(np.min(P2[:,1]),np.max(P2[:,1]))
+        # ax.set_zlim3d(np.min(P2[:,2]),np.max(P2[:,2]))
+        # ax.set_xlabel('X')
+        # ax.set_ylabel('Y')
+        # ax.set_zlabel('Z')
+        # ax.scatter(P2[:,0],P2[:,1],P2[:,2])
+        # plt.show()
 
     # 6.1
 
