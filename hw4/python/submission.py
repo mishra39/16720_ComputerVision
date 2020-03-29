@@ -8,6 +8,11 @@ import helper
 import pdb
 import scipy.optimize
 import matplotlib.pyplot as plt
+import cv2
+
+connections_3d = [[0,1], [1,3], [2,3], [2,0], [4,5], [6,7], [8,9], [9,11], [10,11], [10,8], [0,4], [4,8], [1,5], [5,9], [2,6], [6,10], [3,7], [7,11]]
+color_links = [(255,0,0),(255,0,0),(255,0,0),(255,0,0),(0,0,255),(255,0,255),(0,255,0),(0,255,0),(0,255,0),(0,255,0),(0,0,255),(0,0,255),(0,0,255),(0,0,255),(255,0,255),(255,0,255),(255,0,255),(255,0,255)]
+colors = ['blue','blue','blue','blue','red','magenta','green','green','green','green','red','red','red','red','magenta','magenta','magenta','magenta']
 '''
 Q2.1: Eight Point Algorithm
     Input:  pts1, Nx2 Matrix
@@ -199,10 +204,7 @@ def epipolarCorrespondence(im1, im2, F, x1, y1):
             err = np.linalg.norm((im1_sec-im2_sec)*gauss_wt)
             if err < err_val:
                 err_val = err
-                y2_best = y2
-                x2_best = x2
-
-    return x2_best, y2_best
+                return x2, y2
 
 '''
 Q5.1: RANSAC method.
@@ -216,17 +218,17 @@ def ransacF(pts1, pts2, M, nIters, tol):
     max_inliers = -1
     F = np.empty([3,3]) #3 by 3 empty matrix for the best homograph
 
-    rand_1 = np.empty([7,2])
-    rand_2 = np.empty([7,2])
+    rand_1 = np.empty([8,2])
+    rand_2 = np.empty([8,2])
     max_inliers = -1
 
     pts1_hom = np.vstack((pts1.T,np.ones([1,pts1.shape[0]])))
     pts2_hom = np.vstack((pts2.T,np.ones([1,pts1.shape[0]])))
 
     for ind in range(nIters):
-        print(ind)
+        # print(ind)
         tot_inliers = 0
-        ind_rand = np.random.choice(pts1.shape[0],7)
+        ind_rand = np.random.choice(pts1.shape[0],8)
 
         rand_1 = pts1[ind_rand,:]
         rand_2 = pts2[ind_rand,:]
@@ -239,10 +241,9 @@ def ransacF(pts1, pts2, M, nIters, tol):
         inliers_num = err < tol
         tot_inliers = inliers_num[inliers_num.T].shape[0]
         if tot_inliers > max_inliers:
-            print('in if')
             bestF = F
             max_inliers = tot_inliers
-            inliers = inliers_num[inliers_num.T]
+            inliers = inliers_num
 
     return bestF, inliers
 '''
@@ -358,13 +359,11 @@ def bundleAdjustment(K1, M1, p1, K2, M2_init, p2, P_init):
     t2_0 = M2_init[:, 3]
     r2_0 = invRodrigues(R2_0)
     fun = lambda x: (rodriguesResidual(K1, M1, p1, K2, p2, x))
-    print('here2')
     x0 = P_init.flatten()
     x0 = np.append(x0, r2_0.flatten())
     x0 = np.append(x0, t2_0.flatten())
 
     x_opt, _ = scipy.optimize.leastsq(fun,x0)
-    print('here4')
     P2 = x_opt[0:-6].reshape(-1,3)
     r2 = x_opt[-6:-3].reshape(3,1)
     t2 = x_opt[-3:].reshape(3,1)
@@ -396,7 +395,7 @@ def MultiviewReconstruction(C1, pts1, C2, pts2, C3, pts3, Thres):
 
 if __name__ == "__main__":
 
-    # # 2.1
+    # 2.1
     # pts = np.load('../data/some_corresp.npz')
     # pts1 = pts['pts1']
     # pts2 = pts['pts2']
@@ -404,83 +403,178 @@ if __name__ == "__main__":
     # im2 = plt.imread('../data/im2.png')
     # M = np.max(im1.shape)
 
-    # F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
+    # # F = sevenpoint(pts1[1:7,:], pts2[1:7,:], M) # EightPoint algrithm to find F
 
     # F = eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
-    # np.savez('q2_1.npz', F=F, M=M)
-    # helper.displayEpipolarF(im1, im2, F) # Visualize result
+    # # np.savez('q2_1_other.npz', F=F, M=M)
+    # # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
     # # 3.1
-    # import camera instrinsics
+    # # import camera instrinsics
     # K = np.load('../data/intrinsics.npz')
     # K1 = K['K1']
     # K2 = K['K2']
     # E = essentialMatrix(F, K1, K2)
 
-    # 4.1
+    # # 4.1
     # x1 = pts1[10,0]
     # y1 = pts1[10,1]
-    # x2, y2 = epipolarCorrespondence(im1, im2, F, x1, y1)
+    # x2, y2 = epipolarCorrespondence(im1, im2, F, pts1, pts2)
+    # np.savez('q4_1.npz', F = F, pts1 = pts1, pts2 = pts2)
     # sel_pts1 , sel_pts2 = helper.epipolarMatchGUI(im1, im2, F)
-    # np.savez('q4_1.npz', F = F, pts1 = sel_pts1, pts2 = sel_pts2)
-
-    # # 4.2
 
 
-    # # 5.1
-    # pts = np.load('../data/some_corresp_noisy.npz')
-    # pts1 = pts['pts1']
-    # pts2 = pts['pts2']
-    # im1 = plt.imread('../data/im1.png')
-    # im2 = plt.imread('../data/im2.png')
-    # M = np.max(im1.shape)
-    # nIters = 10
-    # tol = 1
-    # F,inliers = ransacF(pts1, pts2, M, nIters, tol)
+    # 5.1
+    pts = np.load('../data/some_corresp_noisy.npz')
+    pts1 = pts['pts1']
+    pts2 = pts['pts2']
+    im1 = plt.imread('../data/im1.png')
+    im2 = plt.imread('../data/im2.png')
+    M = np.max(im1.shape)
+
+    # import camera instrinsics
+    K = np.load('../data/intrinsics.npz')
+    K1 = K['K1']
+    K2 = K['K2']
+
+    nIters = 1100
+    tol = 0.70
+    F,inliers = ransacF(pts1, pts2, M, nIters, tol)
+    print("Acccuracy of Ransac: ", (np.count_nonzero(inliers)/len(inliers)))
+
+    F = eightpoint(pts1[inliers,:], pts2[inliers,:], M)
+    E = essentialMatrix(F, K1, K2)
     # helper.displayEpipolarF(im1,im2,F)
 
-    # # 5.3
+    # 5.3
+    M1 = np.eye(3)
+    M1 = np.hstack((M1, np.zeros([3,1])))
 
-    # M1 = np.eye(3)
-    # M1 = np.hstack((M1, np.zeros([3,1])))
-    # E = essentialMatrix(F, K1, K2)
-    # M2_all = helper.camera2(E)
+    M2_all = helper.camera2(E)
 
-    # C1 = np.dot(K1 , M1)
-    # err_val = np.inf
+    C1 = np.dot(K1 , M1)
+    err_val = np.inf
 
-    # for i in range(M2_all.shape[2]):
+    for i in range(M2_all.shape[2]):
 
-    #     C2 = np.dot(K2 , M2_all[:,:,i])
-    #     w,err = triangulate(C1, pts1, C2, pts2)
+        C2 = np.dot(K2 , M2_all[:,:,i])
+        w,err = triangulate(C1, pts1, C2, pts2)
 
-    #     if err < err_val:
-    #         err_val = err
-    #         M2 = M2_all[:,:,i]
-    #         C2_best = C2
-    #         w_best = w
+        if err < err_val:
+            err_val = err
+            M2 = M2_all[:,:,i]
+            C2_best = C2
+            w_best = w
 
-    # P_init,err = triangulate(C1, pts1, C2_best, pts2)
-    # M2_out, P2 = bundleAdjustment(K1, M1, pts1, K2, M2, pts2, P_init)
+    P_init,err = triangulate(C1, pts1[inliers,:], C2_best, pts2[inliers,:])
+    print('Original reprojection error: ', err)
+    print('Original M_2: ', M2)
+    M2_opt, P2 = bundleAdjustment(K1, M1, pts1[inliers,:], K2, M2, pts2[inliers,:], P_init)
+
+    C2_opt = np.dot(K2, M2_opt)
+    w_hom = np.hstack((P2,np.ones([P2.shape[0],1])))
+    C2 = np.dot(K2, M2)
+    err_opt = 0
+
+    # Reprojecting
+    for i in range(pts1[inliers,:].shape[0]):
+        pts1_hat = np.dot(C1 , w_hom[i,:].T)
+        pts2_hat = np.dot(C2_opt , w_hom[i,:].T)
+
+        # Normalizing
+        p1_hat_norm = (np.divide(pts1_hat[0:2] , pts1_hat[2])).T
+        p2_hat_norm = (np.divide(pts2_hat[0:2] , pts2_hat[2])).T
+        err1 = np.square(pts1[:,0] - p1_hat_norm[0]) + np.square(pts1[:,1] - p1_hat_norm[0])
+        err2 = np.square(pts2[:,0] - p2_hat_norm[0]) + np.square(pts2[:,1] - p2_hat_norm[0])
+        err_opt += np.sum((p1_hat_norm - pts1[i])**2 + (p2_hat_norm - pts2[i])**2)
+
+    print('Error with optimized 3D points: ', err_opt )
+    print('M2 optimized: ', M2_opt)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection = '3d')
+    ax.set_xlim3d(np.min(P_init[:,0]),np.max(P_init[:,0]))
+    ax.set_ylim3d(np.min(P_init[:,1]),np.max(P_init[:,1]))
+    ax.set_zlim3d(np.min(P_init[:,2]),np.max(P_init[:,2]))
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.scatter(P_init[:,0],P_init[:,1],P_init[:,2])
+    plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection = '3d')
+    ax.set_xlim3d(np.min(P2[:,0]),np.max(P2[:,0]))
+    ax.set_ylim3d(np.min(P2[:,1]),np.max(P2[:,1]))
+    ax.set_zlim3d(np.min(P2[:,2]),np.max(P2[:,2]))
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    ax.scatter(P2[:,0],P2[:,1],P2[:,2])
+    plt.show()
 
     # 6.1
-    time_0 = np.load('../data/q6/time0.npz')
-    pts1 = time_0['pts1'] # Nx3 matrix
-    pts2 = time_0['pts2'] # Nx3 matrix
-    pts3 = time_0['pts3'] # Nx3 matrix
-    M1_0 = time_0['M1']
-    M2_0 = time_0['M2']
-    M3_0 = time_0['M3']
-    K1_0 = time_0['K1']
-    K2_0 = time_0['K2']
-    K3_0 = time_0['K3']
-    C1_0 = np.dot(K1_0,M1_0)
-    C2_0 = np.dot(K1_0,M2_0)
-    C3_0 = np.dot(K1_0,M3_0)
-    Thres = 575
-    P_mv, err_mv = MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
-    M2_opt,P2_opt = bundleAdjustment(K2_0, M2_0, pts2[:,:2], K3_0, M3_0, pts3[:,:2], P_mv)
-    helper.plot_3d_keypoint(P2_opt)
+
+    # time_0 = np.load('../data/q6/time'+str(0)+'.npz')
+    # pts1 = time_0['pts1'] # Nx3 matrix
+    # pts2 = time_0['pts2'] # Nx3 matrix
+    # pts3 = time_0['pts3'] # Nx3 matrix
+    # M1_0 = time_0['M1']
+    # M2_0 = time_0['M2']
+    # M3_0 = time_0['M3']
+    # K1_0 = time_0['K1']
+    # K2_0 = time_0['K2']
+    # K3_0 = time_0['K3']
+    # C1_0 = np.dot(K1_0,M1_0)
+    # C2_0 = np.dot(K1_0,M2_0)
+    # C3_0 = np.dot(K1_0,M3_0)
+    # Thres = 575
+    # P_mv, err_mv = MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
+    # M2_opt,P2_opt = bundleAdjustment(K2_0, M2_0, pts2[:,:2], K3_0, M3_0, pts3[:,:2], P_mv)
+    # fig = plt.figure()
+    # num_points = P2_opt.shape[0]
+    # ax = fig.add_subplot(111, projection='3d')
+    # for j in range(len(connections_3d)):
+    #     index0, index1 = connections_3d[j]
+    #     xline = [P2_opt[index0,0], P2_opt[index1,0]]
+    #     yline = [P2_opt[index0,1], P2_opt[index1,1]]
+    #     zline = [P2_opt[index0,2], P2_opt[index1,2]]
+    #     ax.plot(xline, yline, zline, color=colors[j])
+    # np.set_printoptions(threshold=1e6, suppress=True)
+    # ax.set_xlabel('X Label')
+    # ax.set_ylabel('Y Label')
+    # ax.set_zlabel('Z Label')
+    # # plt.hold(True)
+
+    # time_0 = np.load('../data/q6/time'+str(9)+'.npz')
+    # pts1 = time_0['pts1'] # Nx3 matrix
+    # pts2 = time_0['pts2'] # Nx3 matrix
+    # pts3 = time_0['pts3'] # Nx3 matrix
+    # M1_0 = time_0['M1']
+    # M2_0 = time_0['M2']
+    # M3_0 = time_0['M3']
+    # K1_0 = time_0['K1']
+    # K2_0 = time_0['K2']
+    # K3_0 = time_0['K3']
+    # C1_0 = np.dot(K1_0,M1_0)
+    # C2_0 = np.dot(K1_0,M2_0)
+    # C3_0 = np.dot(K1_0,M3_0)
+    # Thres = 575
+    # P_mv, err_mv = MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
+    # M2_opt,P2_opt = bundleAdjustment(K2_0, M2_0, pts2[:,:2], K3_0, M3_0, pts3[:,:2], P_mv)
+    # for j in range(len(connections_3d)):
+    #     index0, index1 = connections_3d[j]
+    #     xline = [P2_opt[index0,0], P2_opt[index1,0]]
+    #     yline = [P2_opt[index0,1], P2_opt[index1,1]]
+    #     zline = [P2_opt[index0,2], P2_opt[index1,2]]
+    #     ax.plot(xline, yline, zline, color=colors[j])
+    # np.set_printoptions(threshold=1e6, suppress=True)
+    # plt.show()
+    # 6.2
+    # for i in range(9):
+    #     time_ = np.load('../data/q6/time'+str(0)+'.npz')
+
+
 
     # #bundleAdjustment
     # R2_0 = M2_init[:, 0:3]

@@ -53,9 +53,10 @@ for i in range(M2_all.shape[2]):
         err_val = err
         M2 = M2_all[:,:,i]
         C2_best = C2
+        C2 = C2_best
         w_best = w
 
-np.savez('q4_2.npz', F = F, M1 = M1, M2 = M2, C1 = C1, C2 = C2_best)
+# np.savez('q4_2.npz', F = F, M1 = M1, M2 = M2, C1 = C1, C2 = C2)
 fig = plt.figure()
 ax = fig.add_subplot(111, projection = '3d')
 ax.set_xlim3d(np.min(w_best[:,0]),np.max(w_best[:,0]))
