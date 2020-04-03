@@ -42,4 +42,4 @@ for i in range(M2_all.shape[2]):
         C2_best = C2
         w_best = w
 
-np.savez('q3_3.npz', M2 = M2, C2 = C2_best, P = w_best)
+# np.savez('q3_3.npz', M2 = M2, C2 = C2_best, P = w_best)

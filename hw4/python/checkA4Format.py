@@ -38,7 +38,7 @@ x2, y2 = sub.epipolarCorrespondence(im1, im2, F8, data['pts1'][0, 0], data['pts1
 assert np.isscalar(x2) & np.isscalar(y2), 'epipolarCoorespondence returns x & y coordinates'
 
 # 5.1
-F = sub.ransacF(data['pts1'], data['pts2'], M)
+F,inliers = sub.ransacF(data['pts1'], data['pts2'], M,100, 0.9)
 assert F.shape == (3, 3), 'ransacF returns 3x3 matrix'
 
 # 5.2
