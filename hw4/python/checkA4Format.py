@@ -33,13 +33,16 @@ P, err = sub.triangulate(C1, data['pts1'], C2, data['pts2'])
 assert P.shape == (N, 3), 'triangulate returns Nx3 matrix P'
 assert np.isscalar(err), 'triangulate returns scalar err'
 
+print('3.1 done')
 # 4.1
 x2, y2 = sub.epipolarCorrespondence(im1, im2, F8, data['pts1'][0, 0], data['pts1'][0, 1])
 assert np.isscalar(x2) & np.isscalar(y2), 'epipolarCoorespondence returns x & y coordinates'
+print('4.1 done')
 
 # 5.1
-F,inliers = sub.ransacF(data['pts1'], data['pts2'], M,100, 0.9)
+F,inliers = sub.ransacF(data['pts1'], data['pts2'], M,5, 0.9)
 assert F.shape == (3, 3), 'ransacF returns 3x3 matrix'
+print('5.1 done')
 
 # 5.2
 r = np.ones([3, 1])
@@ -49,6 +52,7 @@ assert R.shape == (3, 3), 'rodrigues returns 3x3 matrix'
 R = np.eye(3);
 r = sub.invRodrigues(R)
 assert (r.shape == (3, )) | (r.shape == (3, 1)), 'invRodrigues returns 3x1 vector'
+print('5.2 done')
 
 # 5.3
 K1 = np.random.rand(3, 3)

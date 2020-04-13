@@ -26,61 +26,61 @@ F = submission.eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
 # # helper.displayEpipolarF(im1, im2, F) # Visualize result
 
 # # # 3.1
-# # # import camera instrinsics
-# K = np.load('../data/intrinsics.npz')
-# K1 = K['K1']
-# K2 = K['K2']
-# # E = submission.essentialMatrix(F, K1, K2)
+# # import camera instrinsics
+K = np.load('../data/intrinsics.npz')
+K1 = K['K1']
+K2 = K['K2']
+E = submission.essentialMatrix(F, K1, K2)
 
 # # # 4.1
 # # np.savez('q4_1.npz', F = F, pts1 = pts1, pts2 = pts2)
-# # sel_pts1 , sel_pts2 = helper.epipolarMatchGUI(im1, im2, F)
+# sel_pts1 , sel_pts2 = helper.epipolarMatchGUI(im1, im2, F)
 
 # # 5.1
-# pts = np.load('../data/some_corresp_noisy.npz')
-# pts1 = pts['pts1']
-# pts2 = pts['pts2']
+pts = np.load('../data/some_corresp_noisy.npz')
+pts1 = pts['pts1']
+pts2 = pts['pts2']
 
 # # Without RANSAC
-# F = submission.eightpoint(pts1, pts2, M)
+F = submission.eightpoint(pts1, pts2, M)
 # # helper.displayEpipolarF(im1,im2,F)
 
 # # RANSAC
-# nIters = 1100
-# tol = 0.85
+nIters = 1100
+tol = 0.85
 # F,inliers = submission.ransacF(pts1, pts2, M, nIters, tol)
 # print("Acccuracy of Ransac: ", (np.count_nonzero(inliers)/len(inliers)))
 
 # F = submission.eightpoint(pts1[inliers,:], pts2[inliers,:], M)
 # np.savez('F_ransac.npz',F=F, inliers = inliers)
-# F = np.load('F_ransac.npz')
-# F = F['F']
-# inliers = F['inliers']
-# E = submission.essentialMatrix(F, K1, K2)
+F1 = np.load('F_ransac.npz')
+F = F1['F']
+inliers = F1['inliers']
+E = submission.essentialMatrix(F, K1, K2)
 
 # # helper.displayEpipolarF(im1, im2, F)
 # # 5.3
-# M1 = np.eye(3)
-# M1 = np.hstack((M1, np.zeros([3,1])))
+M1 = np.eye(3)
+M1 = np.hstack((M1, np.zeros([3,1])))
 
-# M2_all = helper.camera2(E)
+M2_all = helper.camera2(E)
 
-# C1 = np.dot(K1 , M1)
-# err_val = np.inf
+C1 = np.dot(K1 , M1)
+err_val = np.inf
 
-# for i in range(M2_all.shape[2]):
+for i in range(M2_all.shape[2]):
 
-#     C2 = np.dot(K2 , M2_all[:,:,i])
-#     w,err = submission.triangulate(C1, pts1, C2, pts2)
+    C2 = np.dot(K2 , M2_all[:,:,i])
+    w,err = submission.triangulate(C1, pts1, C2, pts2)
 
-#     if err < err_val:
-#         err_val = err
-#         M2 = M2_all[:,:,i]
-#         C2_best = C2
-#         w_best = w
+    if err < err_val:
+        err_val = err
+        M2 = M2_all[:,:,i]
+        C2_best = C2
+        w_best = w
 
-# P_init,err = submission.triangulate(C1, pts1[inliers,:], C2_best, pts2[inliers,:])
-# M2_opt, P2 = submission.bundleAdjustment(K1, M1, pts1[inliers,:], K2, M2, pts2[inliers,:], P_init)
+P_init,err = submission.triangulate(C1, pts1[inliers,:], C2_best, pts2[inliers,:])
+M2_opt, P2 = submission.bundleAdjustment(K1, M1, pts1[inliers,:], K2, M2, pts2[inliers,:], P_init)
 
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection = '3d')
@@ -105,8 +105,8 @@ F = submission.eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
 # plt.show()
 
 # 6.1
-# i=0
-# time_0 = np.load('../data/q6/time'+str(i)+'.npz')
+# i=6
+# time_0 = np.load('../data/q6/time'+str(6)+'.npz')
 # print('Time: ', (i))
 # pts1 = time_0['pts1'] # Nx3 matrix
 # pts2 = time_0['pts2'] # Nx3 matrix
@@ -126,7 +126,7 @@ F = submission.eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
 # for i in range(3):
 
 #     time_0 = np.load('../data/q6/time'+str(i+4)+'.npz')
-#     print('Time: ', (i+4))
+#     print('time: ',i+4)
 #     pts1 = time_0['pts1'] # Nx3 matrix
 #     pts2 = time_0['pts2'] # Nx3 matrix
 #     pts3 = time_0['pts3'] # Nx3 matrix
@@ -140,71 +140,42 @@ F = submission.eightpoint(pts1, pts2, M) # EightPoint algrithm to find F
 #     C2_0 = np.dot(K1_0,M2_0)
 #     C3_0 = np.dot(K1_0,M3_0)
 #     Thres = (np.average(pts1[:,2]) + np.average(pts2[:,2])  + np.average(pts3[:,2]))/3
-#     print('Threshold: ', Thres)
+#     # print('Threshold: ', Thres)
 
 #     P_mv, err_mv = submission.MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
 
 # 6.2
+ind = np.arange(0,10,4)
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+for i in ind:
+    time_0 = np.load('../data/q6/time'+str(i)+'.npz')
+    pts1 = time_0['pts1'] # Nx3 matrix
+    pts2 = time_0['pts2'] # Nx3 matrix
+    pts3 = time_0['pts3'] # Nx3 matrix
+    M1_0 = time_0['M1']
+    M2_0 = time_0['M2']
+    M3_0 = time_0['M3']
+    K1_0 = time_0['K1']
+    K2_0 = time_0['K2']
+    K3_0 = time_0['K3']
+    C1_0 = np.dot(K1_0,M1_0)
+    C2_0 = np.dot(K1_0,M2_0)
+    C3_0 = np.dot(K1_0,M3_0)
+    Thres = (np.average(pts1[:,2]) + np.average(pts2[:,2])  + np.average(pts3[:,2]))/3
+    # print('Threshold: ', Thres)
 
-# time_0 = np.load('../data/q6/time'+str(0)+'.npz')
-# pts1 = time_0['pts1'] # Nx3 matrix
-# pts2 = time_0['pts2'] # Nx3 matrix
-# pts3 = time_0['pts3'] # Nx3 matrix
-# M1_0 = time_0['M1']
-# M2_0 = time_0['M2']
-# M3_0 = time_0['M3']
-# K1_0 = time_0['K1']
-# K2_0 = time_0['K2']
-# K3_0 = time_0['K3']
-# C1_0 = np.dot(K1_0,M1_0)
-# C2_0 = np.dot(K1_0,M2_0)
-# C3_0 = np.dot(K1_0,M3_0)
-# Thres = (np.average(pts1[:,2]) + np.average(pts2[:,2])  + np.average(pts3[:,2]))/3
-# print('Threshold: ', Thres)
+    P2_opt, err_mv = submission.MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
 
-# P2_opt, err_mv = submission.MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
-
-# fig = plt.figure()
-# num_points = P2_opt.shape[0]
-# ax = fig.add_subplot(111, projection='3d')
-# for j in range(len(connections_3d)):
-#     index0, index1 = connections_3d[j]
-#     xline = [P2_opt[index0,0], P2_opt[index1,0]]
-#     yline = [P2_opt[index0,1], P2_opt[index1,1]]
-#     zline = [P2_opt[index0,2], P2_opt[index1,2]]
-#     ax.plot(xline, yline, zline, color=colors[j])
-# np.set_printoptions(threshold=1e6, suppress=True)
-# ax.set_xlabel('X Label')
-# ax.set_ylabel('Y Label')
-# ax.set_zlabel('Z Label')
-
-# time_0 = np.load('../data/q6/time'+str(9)+'.npz')
-# pts1 = time_0['pts1'] # Nx3 matrix
-# pts2 = time_0['pts2'] # Nx3 matrix
-# pts3 = time_0['pts3'] # Nx3 matrix
-# M1_0 = time_0['M1']
-# M2_0 = time_0['M2']
-# M3_0 = time_0['M3']
-# K1_0 = time_0['K1']
-# K2_0 = time_0['K2']
-# K3_0 = time_0['K3']
-# C1_0 = np.dot(K1_0,M1_0)
-# C2_0 = np.dot(K1_0,M2_0)
-# C3_0 = np.dot(K1_0,M3_0)
-# Thres = (np.average(pts1[:,2]) + np.average(pts2[:,2])  + np.average(pts3[:,2]))/3
-# print('Threshold: ', Thres)
-
-# P2_opt, err_mv = submission.MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
-
-# for j in range(len(connections_3d)):
-#     index0, index1 = connections_3d[j]
-#     xline = [P2_opt[index0,0], P2_opt[index1,0]]
-#     yline = [P2_opt[index0,1], P2_opt[index1,1]]
-#     zline = [P2_opt[index0,2], P2_opt[index1,2]]
-#     ax.plot(xline, yline, zline, color=colors[j])
-# np.set_printoptions(threshold=1e6, suppress=True)
-# ax.set_xlabel('X Label')
-# ax.set_ylabel('Y Label')
-# ax.set_zlabel('Z Label')
-
-# plt.show()
+    num_points = P2_opt.shape[0]
+    np.set_printoptions(threshold=1e6, suppress=True)
+    ax.set_xlabel('X Label')
+    ax.set_ylabel('Y Label')
+    ax.set_zlabel('Z Label')
+    for j in range(len(connections_3d)):
+        index0, index1 = connections_3d[j]
+        xline = [P2_opt[index0,0], P2_opt[index1,0]]
+        yline = [P2_opt[index0,1], P2_opt[index1,1]]
+        zline = [P2_opt[index0,2], P2_opt[index1,2]]
+        ax.plot(xline, yline, zline, color=colors[j])
+plt.show()

@@ -316,6 +316,7 @@ Q5.3: Rodrigues residual.
     Output: residuals, 4N x 1 vector, the difference between original and estimated projections
 '''
 def rodriguesResidual(K1, M1, p1, K2, p2, x):
+
     P = x[:-6].reshape(-1,3)
     r2 = x[-6:-3].reshape(3,1)
     t2 = x[-3:].reshape(3,1)
@@ -340,6 +341,7 @@ def rodriguesResidual(K1, M1, p1, K2, p2, x):
     p2_hat = p2_hat.T
 
     residuals = np.concatenate([(p1 - p1_hat).reshape(-1),(p2 - p2_hat).reshape(-1)])
+
     return residuals
 
 '''
@@ -390,7 +392,7 @@ Q6.1 Multi-View Reconstruction of keypoints.
             err, the reprojection error.
 '''
 def MultiviewReconstruction(C1, pts1, C2, pts2, C3, pts3, Thres):
-    i = 0
+    # i = 6
     time_0 = np.load('../data/q6/time'+str(i)+'.npz')
     M1 = time_0['M1']
     M2 = time_0['M2']
@@ -398,52 +400,11 @@ def MultiviewReconstruction(C1, pts1, C2, pts2, C3, pts3, Thres):
     K1 = time_0['K1']
     K2 = time_0['K2']
     K3 = time_0['K3']
-    P12, err12 = triangulate(C1, pts1[:,:2], C2, pts2[:,:2])
+    P12, err = triangulate(C1, pts1[:,:2], C2, pts2[:,:2])
     M3_opt,P = bundleAdjustment(K2, M2, pts2[:,:2], K3, M3, pts3[:,:2], P12)
-    np.savez('q6_1.npz',pts_3d = P)
+    # np.savez('q6_1.npz',pts_3d = P)
     # helper.plot_3d_keypoint(P)
     image = plt.imread('../data/q6/cam2_time'+str(i)+'.jpg')
     Thres = (np.min(pts2[:,2]))-100
     # helper.visualize_keypoints(image, pts2, Thres)
-    return P, err12
-
-
-if __name__ == "__main__":
-    # 6.2
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    for i in range(10):
-        time_0 = np.load('../data/q6/time'+str(i)+'.npz')
-        pts1 = time_0['pts1'] # Nx3 matrix
-        pts2 = time_0['pts2'] # Nx3 matrix
-        pts3 = time_0['pts3'] # Nx3 matrix
-        M1_0 = time_0['M1']
-        M2_0 = time_0['M2']
-        M3_0 = time_0['M3']
-        K1_0 = time_0['K1']
-        K2_0 = time_0['K2']
-        K3_0 = time_0['K3']
-        C1_0 = np.dot(K1_0,M1_0)
-        C2_0 = np.dot(K1_0,M2_0)
-        C3_0 = np.dot(K1_0,M3_0)
-        Thres = (np.average(pts1[:,2]) + np.average(pts2[:,2])  + np.average(pts3[:,2]))/3
-        print('Threshold: ', Thres)
-
-        P2_opt, err_mv = MultiviewReconstruction(C1_0, pts1, C2_0, pts2, C3_0, pts3, Thres)
-
-        if i == 0:
-            num_points = P2_opt.shape[0]
-            np.set_printoptions(threshold=1e6, suppress=True)
-            ax.set_xlabel('X Label')
-            ax.set_ylabel('Y Label')
-            ax.set_zlabel('Z Label')
-        for j in range(len(connections_3d)):
-            index0, index1 = connections_3d[j]
-            xline = [P2_opt[index0,0], P2_opt[index1,0]]
-            yline = [P2_opt[index0,1], P2_opt[index1,1]]
-            zline = [P2_opt[index0,2], P2_opt[index1,2]]
-            ax.plot(xline, yline, zline, color=colors[j])
-
-
-    plt.show()
+    return P, err
