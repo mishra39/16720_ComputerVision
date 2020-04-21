@@ -12,7 +12,7 @@ valid_x = valid_data['valid_data']
 
 max_iters = 100
 # pick a batch size, learning rate
-batch_size = 36 
+batch_size = 36
 learning_rate =  3e-5
 hidden_size = 32
 lr_rate = 20
@@ -23,10 +23,16 @@ params = Counter()
 
 # Q5.1 & Q5.2
 # initialize layers here
-##########################
-##### your code here #####
-##########################
+initialize_weights(train_x.shape[1], hidden_size , params,'layer1')
+initialize_weights(hidden_size , hidden_size ,params,'hidden')
+initialize_weights(hidden_size , hidden_size ,params,'hidden2')
+initialize_weights(hidden_size , train_x.shape[1] ,params,'output')
 
+keys = [key for key in params.keys()]
+for k in keys:
+    params['m_' + k] = np.zeros(params[k].shape)
+
+train_loss = []
 # should look like your previous training loops
 for itr in range(max_iters):
     total_loss = 0
@@ -40,26 +46,64 @@ for itr in range(max_iters):
         #   params is a Counter(), which returns a 0 if an element is missing
         #   so you should be able to write your loop without any special conditions
 
-        ##########################
-        ##### your code here #####
-        ##########################
+        h1 = forward(xb,params,'layer1',relu)
+        h2 = forward(h1, params,'hidden',relu)
+        h3 = forward(h2, params,'hidden2',relu)
+        probs = forward(h3,params,'output',sigmoid)
 
+        loss = np.sum(np.square(probs-xb))
+        total_loss += loss
+
+        # Implement backwards!
+        delta1 = 2.0*(probs - xb)
+        delta2 = backwards(delta1,params,'output',sigmoid_deriv)
+        delta3 = backwards(delta2,params,'hidden2',relu_deriv)
+        delta4 = backwards(delta3, params,'hidden',relu_deriv)
+        backwards(delta4, params,'layer1',relu_deriv)
+
+        for k in params.keys():
+            if '_' in k:
+                continue
+            params['m_' + k] = 0.9*params['m_' + k] - learning_rate*params['grad_'+ k ]
+            params[k] += params['m_' + k]
+
+    train_loss.append(total_loss)
     if itr % 2 == 0:
-        print("itr: {:02d} \t loss: {:.2f}".format(itr,total_loss))
-    if itr % lr_rate == lr_rate-1:
+        print("itr: {:02d} \t loss: {:.2f} ".format(itr,total_loss))
+
+    if itr % lr_rate == lr_rate - 1:
         learning_rate *= 0.9
-        
+
+# 5.2
+import matplotlib.pyplot as plt
+plt.figure("Loss")
+plt.plot(range(max_iters), train_loss)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.show()
+
 # Q5.3.1
 import matplotlib.pyplot as plt
 # visualize some results
-##########################
-##### your code here #####
-##########################
+h1 = forward(valid_x,params,'layer1',relu)
+h2 = forward(h1, params,'hidden',relu)
+h3 = forward(h2, params,'hidden2',relu)
+valid_out = forward(h3,params,'output',sigmoid)
 
+idx = np.random.choice(valid_x.shape[0],size=7,replace=False) # random indices
+for i in idx:
+    plt.subplot(2,1,1)
+    plt.imshow(valid_x[i].reshape(hidden_size, hidden_size).T)
+    plt.subplot(2,1,2)
+    plt.imshow(valid_out[i].reshape(hidden_size, hidden_size).T)
+    plt.show()
 
 # Q5.3.2
 from skimage.measure import compare_psnr as psnr
 # evaluate PSNR
-##########################
-##### your code here #####
-##########################
+noise_sig = 0
+for i in range(valid_out.shape[0]):
+    noise_sig += psnr(vaild_x[i], valid_out[i])
+
+noise_sig /= valid_out.shape[0]
+print(noise_sig)
